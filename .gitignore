@@ -1,0 +1,6 @@
+node_modules
+downloads
+src/database/db/out
+src/database/raw_db/out
+package-lock.json
+.env

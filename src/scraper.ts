@@ -75,6 +75,165 @@ export async function mainPageScrapper(page: Page): Promise<ScrapedModules[]> {
     return modules;
 }
 
+interface RadioOption {
+    id: string;
+    name: string;
+    value: string;
+    label: string;
+}
+
+interface RadioGroup {
+    key: string;
+    options: RadioOption[];
+}
+
+async function getVisibleRadioGroups(page: Page): Promise<RadioGroup[]> {
+    await page.evaluate('window.__name = window.__name || ((fn) => fn);').catch(() => { });
+
+    return await page.evaluate(() => {
+        const allRadios = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
+            .filter(input => {
+                const wrapper = (input.closest('p-radiobutton, .br-radio, .radio') || input) as HTMLElement;
+                const style = window.getComputedStyle(wrapper);
+                return style.display !== 'none' && style.visibility !== 'hidden' && wrapper.offsetWidth > 0 && wrapper.offsetHeight > 0;
+            });
+
+        const nameCounts: Record<string, number> = {};
+        allRadios.forEach(r => {
+            if (r.name) nameCounts[r.name] = (nameCounts[r.name] || 0) + 1;
+        });
+
+        const groupsMap = new Map<string, HTMLInputElement[]>();
+
+        allRadios.forEach((r, idx) => {
+            if (r.name && nameCounts[r.name] > 1) {
+                const key = `name:${r.name}`;
+                if (!groupsMap.has(key)) groupsMap.set(key, []);
+                groupsMap.get(key)!.push(r);
+            } else {
+                let parent = r.parentElement;
+                let container: HTMLElement | null = null;
+                while (parent && parent !== document.body) {
+                    const inParent = parent.querySelectorAll('input[type="radio"]');
+                    if (inParent.length > 1) {
+                        container = parent;
+                        break;
+                    }
+                    parent = parent.parentElement;
+                }
+                const containerKey = container
+                    ? (container.getAttribute('formcontrolname') || container.id || container.className || `container_${idx}`)
+                    : `radio_${idx}`;
+                const key = `group:${containerKey}`;
+                if (!groupsMap.has(key)) groupsMap.set(key, []);
+                groupsMap.get(key)!.push(r);
+            }
+        });
+
+        const groups: RadioGroup[] = [];
+        groupsMap.forEach((radios, key) => {
+            if (radios.length > 1) {
+                groups.push({
+                    key,
+                    options: radios.map(r => {
+                        const lbl = document.querySelector(`label[for="${r.id}"]`)?.textContent?.trim() ||
+                            r.closest('p-radiobutton, .br-radio, .radio')?.textContent?.trim() ||
+                            r.value || r.id;
+                        return {
+                            id: r.id,
+                            name: r.name,
+                            value: r.value,
+                            label: lbl
+                        };
+                    })
+                });
+            }
+        });
+
+        return groups;
+    });
+}
+
+async function selectRadioOption(page: Page, option: RadioOption): Promise<void> {
+    await page.evaluate((opt) => {
+        if (opt.id) {
+            const input = document.getElementById(opt.id) as HTMLInputElement | null;
+            const box = input?.closest('p-radiobutton')?.querySelector('.p-radiobutton-box') as HTMLElement | null;
+            if (box) {
+                box.click();
+                return;
+            }
+            const lbl = document.querySelector(`label[for="${opt.id}"]`) as HTMLElement | null;
+            if (lbl) {
+                lbl.click();
+                return;
+            }
+            if (input) {
+                input.click();
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                return;
+            }
+        }
+        if (opt.value) {
+            const input = document.querySelector(`input[type="radio"][value="${opt.value}"]`) as HTMLInputElement | null;
+            if (input) {
+                const box = input.closest('p-radiobutton')?.querySelector('.p-radiobutton-box') as HTMLElement | null;
+                if (box) {
+                    box.click();
+                    return;
+                }
+                const lbl = document.querySelector(`label[for="${input.id}"]`) as HTMLElement | null;
+                if (lbl) {
+                    lbl.click();
+                    return;
+                }
+                input.click();
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+    }, option);
+
+    await sleep(1500);
+    await page.waitForNetworkIdle({ idleTime: 1000, timeout: 10000 }).catch(() => { });
+}
+
+async function iterateFormControlsRecursively(
+    page: Page,
+    moduleName: string,
+    subModuleName: string,
+    log: any,
+    singleFile: boolean,
+    filterContext: (number | string)[] = [],
+    visitedRadioKeys: string[] = []
+): Promise<boolean> {
+    await sleep(1500);
+
+    const radioGroups = await getVisibleRadioGroups(page);
+    const unvisitedGroup = radioGroups.find(g => !visitedRadioKeys.includes(g.key));
+
+    if (unvisitedGroup) {
+        for (let i = 0; i < unvisitedGroup.options.length; i++) {
+            const opt = unvisitedGroup.options[i];
+            log.info(`Selecionando rádio [${opt.label}] no grupo [${unvisitedGroup.key}]`);
+            await selectRadioOption(page, opt);
+
+            const shouldStop = await iterateFormControlsRecursively(
+                page,
+                moduleName,
+                subModuleName,
+                log,
+                singleFile,
+                [...filterContext, `r${i}`],
+                [...visitedRadioKeys, unvisitedGroup.key]
+            );
+            if (shouldStop) return true;
+        }
+        return false;
+    }
+
+    return await iterateDropdownsRecursively(page, 0, moduleName, subModuleName, log, singleFile, filterContext);
+}
+
 async function selectPrimeNgOption(page: Page, dropdownSelector: string, index: number): Promise<boolean> {
     await page.waitForSelector(dropdownSelector, { visible: true });
     await page.click(`${dropdownSelector} .p-dropdown-trigger`);
@@ -343,6 +502,13 @@ async function processLegacyModulePage(page: Page, url: string, moduleName: stri
     const pathParts = urlObj.pathname.split('/').filter(Boolean);
     const subModuleName = pathParts.length > 0 ? pathParts[pathParts.length - 1].replace('.xhtml', '') : 'legacy_default';
 
+    const isAngularPage = await page.$('app-root, p-dropdown');
+    if (isAngularPage) {
+        log.info(`Página anterior possui estrutura Angular/PrimeNG: ${url}`);
+        await iterateFormControlsRecursively(page, moduleName, subModuleName, log, singleFile, []);
+        return;
+    }
+
     const selects = await page.$$eval('select', (elements) => {
         return elements.map(el => {
             const id = el.getAttribute('id');
@@ -365,7 +531,7 @@ async function processLegacyModulePage(page: Page, url: string, moduleName: stri
  * Retorna true se, ao final, existe um arquivo para o contexto
  * (baixado agora ou já existente). Retorna false em caso de falha/botões desabilitados.
  */
-async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleName: string, filterContext: number[], log: any): Promise<boolean> {
+async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleName: string, filterContext: (number | string)[], log: any): Promise<boolean> {
     const safeModuleName = moduleName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     const safeSubModuleName = subModuleName.replace(/[^a-zA-Z0-9\-]/g, '_').toLowerCase();
     const finalDir = path.join(process.cwd(), 'downloads', safeModuleName, safeSubModuleName);
@@ -531,7 +697,7 @@ async function iterateDropdownsRecursively(
     subModuleName: string,
     log: any,
     singleFile: boolean,
-    filterContext: number[] = []
+    filterContext: (number | string)[] = []
 ): Promise<boolean> {
     await sleep(1500); // Aguarda renderização e mutações no DOM
 
@@ -693,7 +859,7 @@ async function processModulePage(page: Page, url: string, moduleName: string, lo
         return; // Interrompe o fluxo normal (dropdowns) se usou links diretos
     }
 
-    await iterateDropdownsRecursively(page, 0, moduleName, subModuleName, log, singleFile, []);
+    await iterateFormControlsRecursively(page, moduleName, subModuleName, log, singleFile, []);
 }
 
 /**

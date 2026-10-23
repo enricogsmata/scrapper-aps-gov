@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "dependencies": {
     "dotenv": "^18.0.9",
     "drizzle-orm": "^0.45.4",
@@ -14,5 +15,15 @@
   "devDependencies": {
     "@types/node": "^26.6.5",
     "drizzle-kit": "^0.31.11"
+  },
+  "scripts": {
+    "raw:generate": "drizzle-kit generate --config=drizzle.raw.config.ts",
+    "raw:migrate": "drizzle-kit migrate --config=drizzle.raw.config.ts",
+    "raw:push": "drizzle-kit push --config=drizzle.raw.config.ts",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
+    "db:push": "drizzle-kit push --config=drizzle.config.ts",
+    "cli": "tsx ./src/index-cli.ts",
+    "app": "tsx ./src/index.ts"
   }
 }

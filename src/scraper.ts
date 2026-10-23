@@ -1,4 +1,4 @@
-import puppeteer, { Page, Puppeteer } from "puppeteer";
+import puppeteer, { Browser, ElementHandle, Page } from "puppeteer";
 import { MAIN_URL } from "./config.js";
 import { new_logger } from "./services/logs.js";
 import fs from "fs";
@@ -10,6 +10,26 @@ export interface ScrapedModules {
     module: string,
     links: string[],
 }
+
+/**
+ * Parâmetros opcionais de execução. Todos têm default, então `runScrapper()`
+ * sem argumentos continua percorrendo todos os módulos e baixando todos os arquivos.
+ * Índices são 0-based e inclusivos.
+ */
+export interface ScrapeOptions {
+    /** true = baixa só o arquivo da primeira combinação de filtros de cada página e passa para a próxima */
+    singleFile?: boolean,
+    /** Primeiro módulo a processar (default: 0) */
+    startModule?: number,
+    /** Último módulo a processar (default: último módulo) */
+    endModule?: number,
+    /** Link inicial dentro do primeiro módulo; nos demais módulos todos os links são processados (default: 0) */
+    startLink?: number,
+    /** Executa o navegador sem interface (default: true). Só vale quando o runScrapper abre o navegador. */
+    headless?: boolean,
+}
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 export async function mainPageScrapper(page: Page): Promise<ScrapedModules[]> {
     const log = logger.forMethod('mainPageScrapper');
@@ -70,7 +90,7 @@ async function selectPrimeNgOption(page: Page, dropdownSelector: string, index: 
 
     await options[index].click();
     // Tempo fixo de espera para garantir o carregamento em cascata do PrimeNG
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await sleep(1500);
     return true;
 }
 
@@ -85,7 +105,7 @@ async function getDropdownOptionsCount(page: Page, dropdownSelector: string): Pr
     const count = options.length;
 
     await page.keyboard.press('Escape');
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await sleep(500);
     return count;
 }
 
@@ -156,7 +176,7 @@ export async function downloadPagamentoExcels(): Promise<void> {
                         if (!isDisabled) {
                             await downloadButton?.click();
                             log.info('Download acionado, aguardando conclusão...');
-                            await new Promise(resolve => setTimeout(resolve, 5000));
+                            await sleep(5000);
                         } else {
                             log.warn('Botão de download desabilitado para esta combinação de filtros.');
                         }
@@ -172,7 +192,180 @@ export async function downloadPagamentoExcels(): Promise<void> {
     }
 }
 
-async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleName: string, filterContext: number[], log: any): Promise<void> {
+async function triggerLegacyDownloadAndSave(
+    page: Page,
+    moduleName: string,
+    subModuleName: string,
+    filterContext: string[],
+    log: any
+): Promise<boolean> {
+    const safeModuleName = moduleName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    const safeSubModuleName = subModuleName.replace(/[^a-zA-Z0-9\-]/g, '_').toLowerCase();
+    const finalDir = path.join(process.cwd(), 'downloads', safeModuleName, safeSubModuleName);
+    const contextStr = filterContext.length > 0 ? filterContext.map(c => c.replace(/[^a-zA-Z0-9]/g, '')).join('_') : 'default';
+
+    if (fs.existsSync(finalDir)) {
+        const existingFiles = fs.readdirSync(finalDir);
+        const fileExists = existingFiles.some(f => f.startsWith(`relatorio_${contextStr}.`));
+        if (fileExists) {
+            log.info(`Arquivo para o contexto [${filterContext.join(', ')}] já existe. Pulando extração.`);
+            return true;
+        }
+    }
+
+    const downloadElementToClick = await page.evaluateHandle(() => {
+        const label = document.querySelector('label[for*="Download"], label.btn-app');
+        if (label && (label.textContent?.includes('Download') || (label as HTMLLabelElement).htmlFor?.includes('Download'))) {
+            return label;
+        }
+        const input = document.querySelector('input[type="submit"][value="Download"], input[value="Download"]');
+        if (input) return input;
+        return null;
+    });
+
+    const el = downloadElementToClick.asElement() as import("puppeteer").ElementHandle<Element> | null;
+
+    if (!el) {
+        log.warn(`Nenhum botão de download encontrado (Legacy) para a combinação: [${filterContext.join(', ')}]`);
+        return false;
+    }
+
+    const tempDir = path.join(process.cwd(), 'temp_downloads', `${Date.now()}_${Math.random().toString(36).substring(7)}`);
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    const client = await page.target().createCDPSession();
+    await client.send('Page.setDownloadBehavior', {
+        behavior: 'allow',
+        downloadPath: tempDir,
+    });
+
+    await page.evaluate((elem) => {
+        (elem as HTMLElement).click();
+    }, el);
+    log.info(`Download acionado (Legacy) para contexto [${filterContext.join(', ')}]. Aguardando conclusão...`);
+
+    let downloadedFile = '';
+    for (let attempts = 0; attempts < 60; attempts++) {
+        await sleep(1000);
+        if (fs.existsSync(tempDir)) {
+            const files = fs.readdirSync(tempDir);
+            if (files.length > 0) {
+                const isDownloading = files.some(f => f.endsWith('.crdownload') || f.endsWith('.tmp'));
+                if (!isDownloading) {
+                    downloadedFile = files[0];
+                    break;
+                }
+            }
+        }
+    }
+
+    let saved = false;
+    if (downloadedFile) {
+        if (!fs.existsSync(finalDir)) fs.mkdirSync(finalDir, { recursive: true });
+
+        const ext = path.extname(downloadedFile);
+        const finalFileName = `relatorio_${contextStr}${ext}`;
+
+        fs.renameSync(path.join(tempDir, downloadedFile), path.join(finalDir, finalFileName));
+        log.info(`Arquivo salvo com sucesso: ${finalDir}/${finalFileName}`);
+        saved = true;
+    } else {
+        log.error(`Falha ou timeout no download (Legacy) para o contexto [${filterContext.join(', ')}]`);
+    }
+
+    if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+
+    return saved;
+}
+
+async function iterateLegacyDropdownsRecursively(
+    page: Page,
+    depth: number,
+    moduleName: string,
+    subModuleName: string,
+    log: any,
+    singleFile: boolean,
+    filterContext: string[] = [],
+    selectSelectors: string[]
+): Promise<boolean> {
+    await sleep(1500);
+
+    if (depth >= selectSelectors.length) {
+        const gotFile = await triggerLegacyDownloadAndSave(page, moduleName, subModuleName, filterContext, log);
+        return singleFile && gotFile;
+    }
+
+    const selector = selectSelectors[depth];
+
+    const isDisabled = await page.$eval(selector, el => (el as HTMLSelectElement).disabled).catch(() => true);
+
+    if (isDisabled) {
+        return iterateLegacyDropdownsRecursively(page, depth + 1, moduleName, subModuleName, log, singleFile, [...filterContext, 'disabled'], selectSelectors);
+    }
+
+    const options = await page.$$eval(`${selector} option`, opts => {
+        return opts.map((o: any) => ({ value: o.value, text: o.textContent.trim() }))
+            .filter(o => o.value !== '99' && o.value !== '');
+    });
+
+    if (options.length === 0) {
+        return iterateLegacyDropdownsRecursively(page, depth + 1, moduleName, subModuleName, log, singleFile, [...filterContext, 'empty'], selectSelectors);
+    }
+
+    for (let i = 0; i < options.length; i++) {
+        const opt = options[i];
+        log.info(`Selecionando opção ${opt.text} no select: ${selector}`);
+        await page.select(selector, opt.value);
+
+        await page.evaluate((sel) => {
+            const el = document.querySelector(sel);
+            if (el) el.dispatchEvent(new Event('change', { bubbles: true }));
+        }, selector);
+
+        await page.waitForNetworkIdle({ idleTime: 1000, timeout: 15000 }).catch(() => { });
+        await sleep(1500);
+
+        const shouldStop = await iterateLegacyDropdownsRecursively(page, depth + 1, moduleName, subModuleName, log, singleFile, [...filterContext, opt.text], selectSelectors);
+        if (shouldStop) return true;
+    }
+
+    return false;
+}
+
+async function processLegacyModulePage(page: Page, url: string, moduleName: string, log: any, singleFile: boolean): Promise<void> {
+    log.info(`Acessando a página legacy: ${url}`);
+    await page.goto(url, { waitUntil: 'networkidle2' });
+    await sleep(2000);
+
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+    const subModuleName = pathParts.length > 0 ? pathParts[pathParts.length - 1].replace('.xhtml', '') : 'legacy_default';
+
+    const selects = await page.$$eval('select', (elements) => {
+        return elements.map(el => {
+            const id = el.getAttribute('id');
+            const name = el.getAttribute('name');
+            if (id) return `select[id="${id}"]`;
+            if (name) return `select[name="${name}"]`;
+            return '';
+        }).filter(Boolean);
+    });
+
+    if (selects.length > 0) {
+        log.info(`Encontrados ${selects.length} filtros (select) na página legacy.`);
+        await iterateLegacyDropdownsRecursively(page, 0, moduleName, subModuleName, log, singleFile, [], selects);
+    } else {
+        await triggerLegacyDownloadAndSave(page, moduleName, subModuleName, [], log);
+    }
+}
+
+/**
+ * Retorna true se, ao final, existe um arquivo para o contexto
+ * (baixado agora ou já existente). Retorna false em caso de falha/botões desabilitados.
+ */
+async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleName: string, filterContext: number[], log: any): Promise<boolean> {
     const safeModuleName = moduleName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     const safeSubModuleName = subModuleName.replace(/[^a-zA-Z0-9\-]/g, '_').toLowerCase();
     const finalDir = path.join(process.cwd(), 'downloads', safeModuleName, safeSubModuleName);
@@ -183,7 +376,7 @@ async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleN
         const fileExists = existingFiles.some(f => f.startsWith(`relatorio_${contextStr}.`));
         if (fileExists) {
             log.info(`Arquivo para o contexto [${filterContext.join(', ')}] já existe. Pulando extração.`);
-            return;
+            return true;
         }
     }
 
@@ -197,7 +390,11 @@ async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleN
         isDownloadDisabled = await page.evaluate(btn => btn?.hasAttribute('disabled'), downloadButton);
     }
 
-    if (isDownloadDisabled) {
+    let downloadElementToClick: ElementHandle<Element> | null = null;
+
+    if (!isDownloadDisabled && downloadButton) {
+        downloadElementToClick = downloadButton;
+    } else {
         const viewButton = await page.$(btnViewSelector);
         let isViewDisabled = true;
         if (viewButton) {
@@ -228,17 +425,50 @@ async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleN
 
                     fs.writeFileSync(path.join(finalDir, finalFileName), JSON.stringify(jsonData, null, 2), 'utf-8');
                     log.info(`Arquivo JSON salvo com sucesso: ${finalDir}/${finalFileName}`);
+                    return true;
                 } catch (e) {
                     log.error(`Erro ao parsear JSON da resposta para contexto [${filterContext.join(', ')}]`);
+                    return false;
                 }
-            } else {
-                log.warn(`Nenhuma resposta de API válida capturada ao "Ver em tela" no contexto [${filterContext.join(', ')}].`);
             }
-            return;
+
+            log.warn(`Nenhuma resposta de API válida capturada ao "Ver em tela" no contexto [${filterContext.join(', ')}].`);
+            return false;
         }
 
-        log.warn(`Ambos botões (Download e Ver em tela) desabilitados para a combinação: [${filterContext.join(', ')}]`);
-        return;
+        // Alternativa para interfaces com "Aplicar filtro" e tabela dinâmica ("Relatório Geral")
+        const applyBtn = await page.evaluateHandle(() => {
+            const btns = Array.from(document.querySelectorAll('button.br-button.primary'));
+            return btns.find(b => b.textContent && b.textContent.includes('Aplicar filtro')) ?? null;
+        });
+        const applyEl = applyBtn.asElement() as ElementHandle<Element> | null;
+
+        if (applyEl) {
+            await applyEl.click();
+            log.info(`"Aplicar filtro" acionado no contexto [${filterContext.join(', ')}]. Aguardando tabela...`);
+
+            // Evita pegar o botão de uma tabela renderizada por um filtro anterior
+            await page.waitForNetworkIdle({ idleTime: 1000, timeout: 15000 }).catch(() => { });
+
+            const tableDownloadSelector = 'button.border-none.bg-transparent:has(i.fa-download)';
+            try {
+                await page.waitForSelector(tableDownloadSelector, { visible: true, timeout: 15000 });
+                const tableButton = await page.$(tableDownloadSelector);
+                const tableButtonDisabled = tableButton
+                    ? await page.evaluate(btn => btn.hasAttribute('disabled'), tableButton)
+                    : true;
+                if (tableButton && !tableButtonDisabled) {
+                    downloadElementToClick = tableButton;
+                }
+            } catch {
+                log.warn(`Botão de download da tabela não apareceu após aplicar filtro [${filterContext.join(', ')}].`);
+            }
+        }
+    }
+
+    if (!downloadElementToClick) {
+        log.warn(`Nenhum fluxo de extração disponível (Download/Ver em Tela/Filtro) para a combinação: [${filterContext.join(', ')}]`);
+        return false;
     }
 
     // Diretório temporário único para isolar o download atual e garantir a nomeação correta
@@ -251,13 +481,13 @@ async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleN
         downloadPath: tempDir,
     });
 
-    await downloadButton!.click();
+    await downloadElementToClick.click();
     log.info(`Download acionado para contexto [${filterContext.join(', ')}]. Aguardando conclusão...`);
 
     let downloadedFile = '';
     // Aguarda até 60 segundos pelo fim do arquivo .crdownload
     for (let attempts = 0; attempts < 60; attempts++) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await sleep(1000);
         if (fs.existsSync(tempDir)) {
             const files = fs.readdirSync(tempDir);
             if (files.length > 0) {
@@ -270,6 +500,7 @@ async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleN
         }
     }
 
+    let saved = false;
     if (downloadedFile) {
         if (!fs.existsSync(finalDir)) fs.mkdirSync(finalDir, { recursive: true });
 
@@ -278,6 +509,7 @@ async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleN
 
         fs.renameSync(path.join(tempDir, downloadedFile), path.join(finalDir, finalFileName));
         log.info(`Arquivo salvo com sucesso: ${finalDir}/${finalFileName}`);
+        saved = true;
     } else {
         log.error(`Falha ou timeout no download para o contexto [${filterContext.join(', ')}]`);
     }
@@ -285,10 +517,23 @@ async function triggerDownloadAndSave(page: Page, moduleName: string, subModuleN
     if (fs.existsSync(tempDir)) {
         fs.rmSync(tempDir, { recursive: true, force: true });
     }
+
+    return saved;
 }
 
-async function iterateDropdownsRecursively(page: Page, depth: number, moduleName: string, subModuleName: string, log: any, filterContext: number[] = []): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Aguarda renderização e mutações no DOM
+/**
+ * Retorna true quando a iteração deve parar (modo singleFile e arquivo obtido).
+ */
+async function iterateDropdownsRecursively(
+    page: Page,
+    depth: number,
+    moduleName: string,
+    subModuleName: string,
+    log: any,
+    singleFile: boolean,
+    filterContext: number[] = []
+): Promise<boolean> {
+    await sleep(1500); // Aguarda renderização e mutações no DOM
 
     // Busca de forma dinâmica apenas os dropdowns que estão efetivamente visíveis na tela atual
     const visibleSelectors = await page.$$eval('p-dropdown', (elements) => {
@@ -301,15 +546,17 @@ async function iterateDropdownsRecursively(page: Page, depth: number, moduleName
             .map((el, index) => {
                 const formControlName = el.getAttribute('formcontrolname');
                 const inputId = el.getAttribute('inputid');
+                const id = el.getAttribute('id');
                 if (formControlName) return `p-dropdown[formcontrolname="${formControlName}"]`;
                 if (inputId) return `p-dropdown[inputid="${inputId}"]`;
+                if (id) return `p-dropdown[id="${id}"]`;
                 return `p-dropdown:nth-of-type(${index + 1})`;
             });
     });
 
     if (depth >= visibleSelectors.length) {
-        await triggerDownloadAndSave(page, moduleName, subModuleName, filterContext, log);
-        return;
+        const gotFile = await triggerDownloadAndSave(page, moduleName, subModuleName, filterContext, log);
+        return singleFile && gotFile;
     }
 
     const selector = visibleSelectors[depth];
@@ -320,8 +567,7 @@ async function iterateDropdownsRecursively(page: Page, depth: number, moduleName
     }, selector).catch(() => true);
 
     if (isDropdownDisabled) {
-        await iterateDropdownsRecursively(page, depth + 1, moduleName, subModuleName, log, [...filterContext, -1]);
-        return;
+        return iterateDropdownsRecursively(page, depth + 1, moduleName, subModuleName, log, singleFile, [...filterContext, -1]);
     }
 
     const count = await getDropdownOptionsCount(page, selector);
@@ -336,43 +582,173 @@ async function iterateDropdownsRecursively(page: Page, depth: number, moduleName
         log.info(`Selecionando opção índice ${i} no dropdown: ${selector}`);
         const clicked = await selectPrimeNgOption(page, selector, i);
         if (clicked) {
-            await iterateDropdownsRecursively(page, depth + 1, moduleName, subModuleName, log, [...filterContext, i]);
+            const shouldStop = await iterateDropdownsRecursively(page, depth + 1, moduleName, subModuleName, log, singleFile, [...filterContext, i]);
+            if (shouldStop) return true;
         }
     }
+
+    return false;
 }
 
-async function processModulePage(page: Page, url: string, moduleName: string, log: any): Promise<void> {
+async function processModulePage(page: Page, url: string, moduleName: string, log: any, singleFile: boolean): Promise<void> {
     log.info(`Acessando a página: ${url}`);
     await page.goto(url, { waitUntil: 'networkidle2' });
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await sleep(2000);
+
+    // Mapeia e acessa relatórios legados
+    const legacyLinks = await page.$$eval('ul.relatorios-anteriores__lista a', (anchors) => {
+        return anchors.map(a => (a as HTMLAnchorElement).href);
+    });
+
+    for (const legacyUrl of legacyLinks) {
+        log.info(`Iniciando extração do relatório anterior (Legacy): ${legacyUrl}`);
+        const legacyPage = await page.browser().newPage();
+        try {
+            await processLegacyModulePage(legacyPage, legacyUrl, moduleName, log, singleFile);
+        } catch (err) {
+            log.error({ err }, `Erro ao processar página legacy: ${legacyUrl}`);
+        } finally {
+            await legacyPage.close();
+        }
+    }
 
     const urlObj = new URL(url);
     const pathParts = urlObj.pathname.split('/').filter(Boolean);
     const subModuleName = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'default';
 
-    await iterateDropdownsRecursively(page, 0, moduleName, subModuleName, log, []);
+    // Verifica a existência de links de download diretos (ex: accordions em "Outros incentivos")
+    const directLinks = await page.$$('a.br-button.primary');
+    const validLinks: import("puppeteer").ElementHandle<Element>[] = [];
+
+    for (const link of directLinks) {
+        const text = await page.evaluate(el => el.textContent?.trim(), link);
+        const hasHref = await page.evaluate(el => el.hasAttribute('href'), link);
+        if (text === 'Download' && hasHref) {
+            validLinks.push(link);
+        }
+    }
+
+    if (validLinks.length > 0) {
+        log.info(`Encontrados ${validLinks.length} links diretos de download na página.`);
+        const safeModuleName = moduleName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+        const safeSubModuleName = subModuleName.replace(/[^a-zA-Z0-9\-]/g, '_').toLowerCase();
+        const finalDir = path.join(process.cwd(), 'downloads', safeModuleName, safeSubModuleName);
+
+        for (let i = 0; i < validLinks.length; i++) {
+            const contextStr = `link_${i}`;
+
+            if (fs.existsSync(finalDir)) {
+                const existingFiles = fs.readdirSync(finalDir);
+                if (existingFiles.some(f => f.startsWith(`relatorio_${contextStr}.`))) {
+                    log.info(`Arquivo para o link [${i}] já existe. Pulando extração.`);
+                    if (singleFile) return;
+                    continue;
+                }
+            }
+
+            const tempDir = path.join(process.cwd(), 'temp_downloads', `${Date.now()}_${Math.random().toString(36).substring(7)}`);
+            fs.mkdirSync(tempDir, { recursive: true });
+
+            const client = await page.target().createCDPSession();
+            await client.send('Page.setDownloadBehavior', {
+                behavior: 'allow',
+                downloadPath: tempDir,
+            });
+
+            // Clica via evaluate para ignorar se o accordion estiver fechado (visibility: hidden)
+            await page.evaluate((el) => (el as HTMLElement).click(), validLinks[i]);
+            log.info(`Download direto acionado para link [${i}]. Aguardando conclusão...`);
+
+            let downloadedFile = '';
+            for (let attempts = 0; attempts < 60; attempts++) {
+                await sleep(1000);
+                if (fs.existsSync(tempDir)) {
+                    const files = fs.readdirSync(tempDir);
+                    if (files.length > 0) {
+                        const isDownloading = files.some(f => f.endsWith('.crdownload') || f.endsWith('.tmp'));
+                        if (!isDownloading) {
+                            downloadedFile = files[0];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (downloadedFile) {
+                if (!fs.existsSync(finalDir)) fs.mkdirSync(finalDir, { recursive: true });
+                const ext = path.extname(downloadedFile);
+                const finalFileName = `relatorio_${contextStr}${ext}`;
+                fs.renameSync(path.join(tempDir, downloadedFile), path.join(finalDir, finalFileName));
+                log.info(`Arquivo salvo com sucesso: ${finalDir}/${finalFileName}`);
+            } else {
+                log.error(`Falha ou timeout no download direto para o link [${i}]`);
+            }
+
+            if (fs.existsSync(tempDir)) {
+                fs.rmSync(tempDir, { recursive: true, force: true });
+            }
+
+            if (singleFile) return;
+        }
+        return; // Interrompe o fluxo normal (dropdowns) se usou links diretos
+    }
+
+    await iterateDropdownsRecursively(page, 0, moduleName, subModuleName, log, singleFile, []);
 }
 
-export async function runScrapper() {
-    const log = logger.forMethod('runScrapper');
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
+/**
+ * Processa os módulos já extraídos da main page, respeitando as opções do usuário.
+ * Exportada para quem já abriu o navegador e quer inspecionar os módulos antes de rodar (ex.: CLI).
+ */
+export async function runModules(page: Page, modules: ScrapedModules[], options: ScrapeOptions = {}): Promise<void> {
+    const log = logger.forMethod('runModules');
 
-    const modules: ScrapedModules[] = await mainPageScrapper(page);
+    if (modules.length === 0) {
+        log.warn('Nenhum módulo para processar.');
+        return;
+    }
 
-    log.info('Iniciando navegador para iterar nos módulos extraídos...');
+    const lastIdx = modules.length - 1;
+    const startModule = Math.min(Math.max(options.startModule ?? 0, 0), lastIdx);
+    const endModule = Math.min(Math.max(options.endModule ?? lastIdx, startModule), lastIdx);
+    const startLink = Math.max(options.startLink ?? 0, 0);
+    const singleFile = options.singleFile ?? false;
 
-    for (const mod of modules) {
-        for (const link of mod.links) {
+    for (let m = startModule; m <= endModule; m++) {
+        const mod = modules[m];
+        log.info(`=== Módulo [${m + 1}/${modules.length}]: ${mod.module} ===`);
+
+        const firstLink = m === startModule ? startLink : 0;
+
+        for (let l = firstLink; l < mod.links.length; l++) {
+            const link = mod.links[l];
             try {
-                log.info(`Iniciando extração do módulo: ${mod.module} | Link: ${link}`);
-                await processModulePage(page, link, mod.module, log);
+                log.info(`Link [${l + 1}/${mod.links.length}] | Iniciando extração do módulo: ${mod.module} | Link: ${link}`);
+                await processModulePage(page, link, mod.module, log, singleFile);
             } catch (error) {
                 log.error({ err: error }, `Falha ao processar a página ${link}`);
             }
         }
     }
+}
 
-    await browser.close();
-    log.info('Processo global de scraping e downloads finalizado com sucesso!');
+/**
+ * Entrada programática: abre o navegador, extrai os módulos da main page e processa
+ * conforme `options`. Sem argumentos, processa tudo.
+ */
+export async function runScrapper(options: ScrapeOptions = {}): Promise<void> {
+    const log = logger.forMethod('runScrapper');
+    const browser: Browser = await puppeteer.launch({ headless: options.headless ?? true });
+
+    try {
+        const page = await browser.newPage();
+        const modules: ScrapedModules[] = await mainPageScrapper(page);
+
+        log.info('Iniciando navegador para iterar nos módulos extraídos...');
+        await runModules(page, modules, options);
+
+        log.info('Processo global de scraping e downloads finalizado com sucesso!');
+    } finally {
+        await browser.close();
+    }
 }

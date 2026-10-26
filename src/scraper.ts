@@ -10,6 +10,7 @@ import { scrapeOutrosIncentivos } from "./scrapers/outros_incentivos.js";
 import { scrapeSolicitacoesAdesao } from "./scrapers/solicitacoes_adesao.js";
 import { scrapeCoberturaAps } from "./scrapers/cobertura_aps.js";
 import { scrapeCoberturaSaudeBucal } from "./scrapers/cobertura_saude_bucal.js";
+import { scrapeCoberturaAcs } from "./scrapers/cobertura_acs.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -117,7 +118,10 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeCoberturaAps(page, moduleName, link);
                     //return;
                 } else if (link.includes('cobertura/saude-bucal')) {
-                    await scrapeCoberturaSaudeBucal(page, moduleName, link);
+                    //await scrapeCoberturaSaudeBucal(page, moduleName, link);
+                    //return;
+                } else if (link.includes('cobertura/acs')) {
+                    await scrapeCoberturaAcs(page, moduleName, link);
                     return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);

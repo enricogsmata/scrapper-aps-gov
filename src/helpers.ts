@@ -1,6 +1,6 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 
-export async function getControlesScraper(url: string) {
+export async function getPageData(url: string) {
     const browser: Browser = await puppeteer.launch({
         headless: true,
         args: [

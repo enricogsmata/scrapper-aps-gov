@@ -4,6 +4,7 @@ import { MAIN_URL } from "./types.js";
 import { new_logger } from "./services/logs.js";
 import { scrapeAusenciaEnvioProducao } from "./scrapers/ausencia_envio_producao.js";
 import { scrapePagamento } from "./scrapers/pagamento.js";
+import { scrapeInesCnesHomologados } from "./scrapers/ines_cnes_homologados.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -93,7 +94,10 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeAusenciaEnvioProducao(page, moduleName, link);
                     //return;
                 } else if (link.includes('pagamento')) {
-                    await scrapePagamento(page, moduleName, link);
+                    //await scrapePagamento(page, moduleName, link);
+                    //return;
+                } else if (link.includes('ines-cnes-homologados')) {
+                    await scrapeInesCnesHomologados(page, moduleName, link);
                     return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);

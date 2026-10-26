@@ -5,3 +5,4 @@ src/database/raw_db/out
 package-lock.json
 .env
 temp_downloads
+src/tmp.ts

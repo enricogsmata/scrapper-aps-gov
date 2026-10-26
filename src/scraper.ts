@@ -8,6 +8,7 @@ import { scrapeRelatorioSolicitacoes } from "./scrapers/relatorio_solicitacoes.j
 import { scrapeInesCnesHomologados } from "./scrapers/ines_cnes_homologados.js";
 import { scrapeOutrosIncentivos } from "./scrapers/outros_incentivos.js";
 import { scrapeSolicitacoesAdesao } from "./scrapers/solicitacoes_adesao.js";
+import { scrapeCoberturaAps } from "./scrapers/cobertura_aps.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -109,7 +110,10 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeSolicitacoesAdesao(page, moduleName, link);
                     //return;
                 } else if (link.includes('outros-incentivos')) {
-                    await scrapeOutrosIncentivos(page, moduleName, link);
+                    //await scrapeOutrosIncentivos(page, moduleName, link);
+                    //return;
+                } else if (link.includes('cobertura/aps')) {
+                    await scrapeCoberturaAps(page, moduleName, link);
                     return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);

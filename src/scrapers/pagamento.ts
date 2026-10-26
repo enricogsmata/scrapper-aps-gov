@@ -1,89 +1,138 @@
 // src/scrapers/pagamento.ts
 import { Page } from "puppeteer";
 import * as path from "path";
-import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption } from "../primeng_helpers.js";
+import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
+import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption } from "../primeng_helpers.js";
 import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
+const SELECTORS = {
+    tipoUnidade: 'p-dropdown[formcontrolname="tipoUnidade"]',
+    estado: 'p-dropdown[formcontrolname="estadoSelecionado"]',
+    municipio: 'p-dropdown[formcontrolname="municipioSelecionado"]',
+    ano: 'p-dropdown[formcontrolname="periodoSelecionado"]',
+    inicio: 'p-dropdown[formcontrolname="parcelaInicioSelecionada"]',
+    fim: 'p-dropdown[formcontrolname="parcelaFimSelecionada"]',
+    btnDownload: 'button[aria-label="Download"]',
+    btnVerTela: 'button[aria-label="Ver em tela"]'
+};
+
+async function isDropdownActive(page: Page, selector: string): Promise<boolean> {
+    return page.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return false;
+        const dropdown = el.querySelector('.p-dropdown');
+        if (!dropdown) return false;
+        // Verifica se existe a classe p-disabled ou se está oculto
+        return !dropdown.classList.contains('p-disabled') && (dropdown as HTMLElement).offsetParent !== null;
+    }, selector);
+}
+
+async function doDownload(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
+    const log = logger.forMethod('doDownload');
+
+    const isDownloadDisabled = await page.evaluate((sel) => {
+        const el = document.querySelector<HTMLButtonElement>(sel);
+        return !el || el.disabled || el.classList.contains('p-disabled');
+    }, SELECTORS.btnDownload);
+
+    if (isDownloadDisabled) {
+        log.info(`[${filePrefix}] Botão de download bloqueado. Tentando via requisição (Ver em tela)...`);
+
+        const responsePromise = page.waitForResponse(response =>
+            response.url().includes('/financiamento/pagamento') && response.request().method() === 'GET',
+            { timeout: 60000 }
+        );
+
+        await page.click(SELECTORS.btnVerTela);
+
+        try {
+            const response = await responsePromise;
+            const json = await response.json();
+
+            const filePath = path.join(downloadPath, `${filePrefix}.json`);
+            fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
+            log.info(`[${filePrefix}] Dados salvos em JSON com sucesso.`);
+        } catch (error) {
+            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
+        }
+    } else {
+        log.info(`[${filePrefix}] Botão de download habilitado. Realizando download do arquivo...`);
+        const filesBefore = getFilesInDir(downloadPath);
+        await page.click(SELECTORS.btnDownload);
+        try {
+            await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix);
+            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso.`);
+        } catch (error) {
+            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha no download do arquivo:`);
+        }
+    }
+}
+
+async function processAnoEParcelas(page: Page, downloadPath: string, prefix: string): Promise<void> {
+    const numAnos = await getPrimeNgDropdownOptionsCount(page, SELECTORS.ano);
+    for (let y = 0; y < numAnos; y++) {
+        await selectPrimeNgDropdownOption(page, SELECTORS.ano, y);
+        await new Promise(r => setTimeout(r, 1000)); // Aguarda carregamento das parcelas
+
+        const numInicio = await getPrimeNgDropdownOptionsCount(page, SELECTORS.inicio);
+        for (let s = 0; s < numInicio; s++) {
+            await selectPrimeNgDropdownOption(page, SELECTORS.inicio, s);
+            await new Promise(r => setTimeout(r, 500));
+
+            if (await isDropdownActive(page, SELECTORS.fim)) {
+                const numFim = await getPrimeNgDropdownOptionsCount(page, SELECTORS.fim);
+                for (let f = 0; f < numFim; f++) {
+                    await selectPrimeNgDropdownOption(page, SELECTORS.fim, f);
+                    await new Promise(r => setTimeout(r, 500));
+
+                    await doDownload(page, downloadPath, `${prefix}_ano-${y}_ini-${s}_fim-${f}`);
+                }
+            } else {
+                await doDownload(page, downloadPath, `${prefix}_ano-${y}_ini-${s}`);
+            }
+        }
+    }
+}
+
 export async function scrapePagamento(page: Page, moduleName: string, targetUrl: string): Promise<void> {
     const log = logger.forMethod('scrapePagamento');
-    const downloadPath = path.resolve(process.cwd(), 'downloads', moduleName);
+
+    const urlObj = new URL(targetUrl);
+    const treatedLinkName = urlObj.pathname.split('/').filter(Boolean).join('-').toLowerCase() || 'pagamento';
+    const downloadPath = path.resolve(process.cwd(), 'downloads', moduleName, treatedLinkName);
 
     await setupDownloadBehavior(page, downloadPath);
 
     log.info(`Navegando para ${targetUrl}`);
     await page.goto(targetUrl, { waitUntil: 'networkidle2' });
 
-    const stateDropdownSelector = 'p-dropdown[inputid="estado"]';
-    const yearDropdownSelector = 'p-dropdown[inputid="ano"]';
-    const parcelaInicioSelector = 'p-dropdown[inputid="parcela-inicio"]';
-    const parcelaFimSelector = 'p-dropdown[inputid="parcela-fim"]';
-    const downloadBtnSelector = 'app-botao-download-excel button';
+    const numTipos = await getPrimeNgDropdownOptionsCount(page, SELECTORS.tipoUnidade);
 
-    log.info('Aguardando página carregar e dropdown de estados...');
-    
-    // Fallback para 0 caso o dropdown não esteja disponível imediatamente
-    const statesCount = await getPrimeNgDropdownOptionsCount(page, stateDropdownSelector).catch(() => 0);
+    for (let i = 0; i < numTipos; i++) {
+        await selectPrimeNgDropdownOption(page, SELECTORS.tipoUnidade, i);
+        await new Promise(r => setTimeout(r, 1000)); // Aguarda requisições dependentes
 
-    log.info(`Encontrados ${statesCount > 0 ? statesCount - 1 : 0} estados. Iniciando extração...`);
+        const numEstados = await getPrimeNgDropdownOptionsCount(page, SELECTORS.estado);
+        for (let j = 0; j < numEstados; j++) {
+            await selectPrimeNgDropdownOption(page, SELECTORS.estado, j);
+            await new Promise(r => setTimeout(r, 1500)); // Aguarda carregamento de municípios/parcelas
 
-    // Interações encadeadas (Estado -> Ano -> Parcela)
-    for (let s = 1; s < statesCount; s++) {
-        log.info(`Selecionando estado no índice ${s}...`);
-        await selectPrimeNgDropdownOption(page, stateDropdownSelector, s);
-        
-        // Aguarda a atualização assíncrona do PrimeNG
-        await new Promise(r => setTimeout(r, 1500)); 
-
-        const yearsCount = await getPrimeNgDropdownOptionsCount(page, yearDropdownSelector).catch(() => 0);
-
-        for (let y = 1; y < yearsCount; y++) {
-            log.info(`Selecionando ano no índice ${y} para o estado ${s}...`);
-            await selectPrimeNgDropdownOption(page, yearDropdownSelector, y);
-            
-            await new Promise(r => setTimeout(r, 1500));
-
-            const parcelaInicioCount = await getPrimeNgDropdownOptionsCount(page, parcelaInicioSelector).catch(() => 0);
-            const parcelaFimCount = await getPrimeNgDropdownOptionsCount(page, parcelaFimSelector).catch(() => 0);
-
-            if (parcelaInicioCount > 1 && parcelaFimCount > 1) {
-                // Seleciona o espectro completo de parcelas daquele ano
-                await selectPrimeNgDropdownOption(page, parcelaInicioSelector, 1); 
-                await selectPrimeNgDropdownOption(page, parcelaFimSelector, parcelaFimCount - 1); 
-                
-                await new Promise(r => setTimeout(r, 1000));
-
-                const isBtnDisabled = await page.$eval(downloadBtnSelector, btn => btn.hasAttribute('disabled')).catch(() => true);
-
-                if (!isBtnDisabled) {
-                    const filesBefore = getFilesInDir(downloadPath);
-                    await page.click(downloadBtnSelector);
-
+            if (await isDropdownActive(page, SELECTORS.municipio)) {
+                const numMuns = await getPrimeNgDropdownOptionsCount(page, SELECTORS.municipio);
+                for (let k = 0; k < numMuns; k++) {
+                    await selectPrimeNgDropdownOption(page, SELECTORS.municipio, k);
                     await new Promise(r => setTimeout(r, 1000));
 
-                    await page.waitForFunction(
-                        (selector) => {
-                            const btn = document.querySelector(selector);
-                            return btn && !btn.hasAttribute('disabled');
-                        },
-                        { timeout: 60000 },
-                        downloadBtnSelector
-                    ).catch(() => {});
-
-                    log.info(`Aguardando download no sistema de arquivos...`);
-                    const safeName = `pagamento_est_${s}_ano_${y}_${Date.now()}`;
-                    
-                    await waitForNewDownloadAndRename(downloadPath, filesBefore, safeName).catch(err => {
-                        log.error(`Erro ao aguardar o download: ${err.message}`);
-                    });
-                } else {
-                    log.info(`Botão de download desabilitado para o estado ${s}, ano ${y}. Pulando.`);
+                    await processAnoEParcelas(page, downloadPath, `tipo-${i}_est-${j}_mun-${k}`);
                 }
+            } else {
+                await processAnoEParcelas(page, downloadPath, `tipo-${i}_est-${j}`);
             }
         }
     }
 
-    log.info('Extração finalizada para: Pagamento.');
+    log.info('Extração finalizada para: Pagamento (Financiamento).');
 }

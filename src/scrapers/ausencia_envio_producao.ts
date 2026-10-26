@@ -9,7 +9,10 @@ const logger = new_logger(import.meta.url);
 
 export async function scrapeAusenciaEnvioProducao(page: Page, moduleName: string, targetUrl: string): Promise<void> {
     const log = logger.forMethod('scrapeAusenciaEnvioProducao');
-    const downloadPath = path.resolve(process.cwd(), 'downloads', moduleName);
+
+    const urlObj = new URL(targetUrl);
+    const treatedLinkName = urlObj.pathname.split('/').filter(Boolean).join('-').toLowerCase() || 'pagamento';
+    const downloadPath = path.resolve(process.cwd(), 'downloads', moduleName, treatedLinkName);
 
     await setupDownloadBehavior(page, downloadPath);
 

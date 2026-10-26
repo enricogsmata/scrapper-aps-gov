@@ -44,8 +44,14 @@ export async function waitForNewDownloadAndRename(downloadPath: string, filesBef
                     const oldPath = path.join(downloadPath, downloadedFile);
                     const extension = path.extname(downloadedFile);
                     const newPath = path.join(downloadPath, `${newFileName}${extension}`);
-                    fs.renameSync(oldPath, newPath);
-                    return;
+                    
+                    try {
+                        fs.renameSync(oldPath, newPath);
+                        return;
+                    } catch (error) {
+                        // Se gerar erro (ex: EBUSY), o arquivo ainda está sendo escrito/bloqueado pelo navegador.
+                        // Ignora a falha para tentar renomear novamente no próximo ciclo (1 segundo).
+                    }
                 }
             }
         }

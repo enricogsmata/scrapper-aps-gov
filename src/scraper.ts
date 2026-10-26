@@ -1,6 +1,6 @@
 // src/scraper.ts
 import puppeteer, { Browser, ElementHandle, Page } from "puppeteer";
-import { MAIN_URL } from "./config.js";
+import { MAIN_URL } from "./types.js";
 import { new_logger } from "./services/logs.js";
 import { scrapeAusenciaEnvioProducao } from "./scrapers/ausencia_envio_producao.js";
 import { scrapePagamento } from "./scrapers/pagamento.js";
@@ -90,8 +90,8 @@ export async function runScrapper(): Promise<void> {
 
             for (const link of module.links) {
                 if (link.includes('ausencia-envio-producao')) {
-                    await scrapeAusenciaEnvioProducao(page, moduleName, link);
-                    return;
+                    //await scrapeAusenciaEnvioProducao(page, moduleName, link);
+                    //return;
                 } else if (link.includes('pagamento')) {
                     await scrapePagamento(page, moduleName, link);
                     return;

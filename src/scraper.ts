@@ -13,6 +13,7 @@ import { scrapeCoberturaSaudeBucal } from "./scrapers/cobertura_saude_bucal.js";
 import { scrapeCoberturaAcs } from "./scrapers/cobertura_acs.js";
 import { scrapeMapasSus } from "./scrapers/mapas_sus.js";
 import { scrapeHistoricoPagamentoIndex } from "./scrapers/historico_pagamento_index.js";
+import { scrapeAdesaoPse } from "./scrapers/adesao_pse.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -129,11 +130,14 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeMapasSus(page, moduleName, link);
                     //return;
                 } else if (link.includes('relHistoricoPagamentoIndex')) {
-                    await scrapeHistoricoPagamentoIndex(page, moduleName, link);
+                    //await scrapeHistoricoPagamentoIndex(page, moduleName, link);
+                    //return;
+                } else if (link.includes('adesao/pse')) {
+                    await scrapeAdesaoPse(page, moduleName, link);
                     return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);
-                    return;
+                    continue;
                 }
             }
         }

@@ -44,3 +44,20 @@ export async function selectPrimeNgRadioButton(page: Page, inputId: string): Pro
     await page.waitForSelector(radioSelector, { visible: true });
     await page.click(radioSelector);
 }
+
+/**
+ * Garante que uma aba de AccordionTab do PrimeNG esteja expandida.
+ */
+export async function ensurePrimeNgAccordionTabOpen(page: Page, tabSelector: string): Promise<void> {
+    const isClosed = await page.evaluate((sel) => {
+        const tab = document.querySelector(sel);
+        if (!tab) return false;
+        const innerTab = tab.querySelector('.p-accordion-tab');
+        return innerTab ? !innerTab.classList.contains('p-accordion-tab-active') : false;
+    }, tabSelector);
+
+    if (isClosed) {
+        await page.click(`${tabSelector} .p-accordion-header-link`);
+        await page.waitForSelector(`${tabSelector} .p-toggleable-content[aria-hidden="false"]`, { visible: true });
+    }
+}

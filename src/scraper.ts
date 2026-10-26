@@ -11,6 +11,7 @@ import { scrapeSolicitacoesAdesao } from "./scrapers/solicitacoes_adesao.js";
 import { scrapeCoberturaAps } from "./scrapers/cobertura_aps.js";
 import { scrapeCoberturaSaudeBucal } from "./scrapers/cobertura_saude_bucal.js";
 import { scrapeCoberturaAcs } from "./scrapers/cobertura_acs.js";
+import { scrapeMapasSus } from "./scrapers/mapas_sus.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -121,7 +122,10 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeCoberturaSaudeBucal(page, moduleName, link);
                     //return;
                 } else if (link.includes('cobertura/acs')) {
-                    await scrapeCoberturaAcs(page, moduleName, link);
+                    //await scrapeCoberturaAcs(page, moduleName, link);
+                    //return;
+                } else if (link.includes('mapas.sus.c3sl.ufpr.br')) {
+                    await scrapeMapasSus(page, moduleName, link);
                     return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);

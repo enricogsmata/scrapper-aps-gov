@@ -35,3 +35,12 @@ export async function selectPrimeNgDropdownOption(page: Page, dropdownSelector: 
         throw new Error(`Opção no índice ${index} não encontrada no PrimeNG dropdown.`);
     }
 }
+
+/**
+ * Seleciona um radio button do PrimeNG pelo id do input ou label correspondente.
+ */
+export async function selectPrimeNgRadioButton(page: Page, inputId: string): Promise<void> {
+    const radioSelector = `p-radiobutton[inputid="${inputId}"] .p-radiobutton-box, label[for="${inputId}"]`;
+    await page.waitForSelector(radioSelector, { visible: true });
+    await page.click(radioSelector);
+}

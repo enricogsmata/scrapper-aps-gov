@@ -18,11 +18,49 @@ const SELECTORS = {
     municipio: 'p-dropdown#municipio',
     tipoSolicitacao: 'p-dropdown#tipoSolicitacao',
     estrategia: 'p-dropdown#estrategia',
+    situacao: 'p-dropdown#tipo',
+    tipoConsolidado: 'p-dropdown#tipoConsolidado',
+    tipoAlteracaoTipologia: 'p-dropdown#tipoAlteracaoTipologia',
     btnDownloadModal: 'div.buttons-container button.br-button.secondary',
     btnAplicarFiltro: 'div.buttons-container button.br-button.primary',
     btnDownloadTabela: 'app-table-relatorio-solicitacoes button.border-none',
     tabelaRelatorio: 'app-table-relatorio-solicitacoes table.p-datatable-table'
 };
+
+const DYNAMIC_DROPDOWNS = [
+    { key: 'situacao', selector: SELECTORS.situacao },
+    { key: 'tipoConsolidado', selector: SELECTORS.tipoConsolidado },
+    { key: 'tipoSolicitacao', selector: SELECTORS.tipoSolicitacao },
+    { key: 'estrategia', selector: SELECTORS.estrategia },
+    { key: 'tipoAlteracaoTipologia', selector: SELECTORS.tipoAlteracaoTipologia }
+];
+
+async function iterateDynamicDropdowns(
+    page: Page,
+    dropdowns: typeof DYNAMIC_DROPDOWNS,
+    currentIndex: number,
+    downloadPath: string,
+    currentPrefix: string
+): Promise<void> {
+    if (currentIndex >= dropdowns.length) {
+        await doDownload(page, downloadPath, currentPrefix);
+        return;
+    }
+
+    const currentDropdown = dropdowns[currentIndex];
+
+    if (await isDropdownActive(page, currentDropdown.selector)) {
+        const count = await getPrimeNgDropdownOptionsCount(page, currentDropdown.selector);
+        for (let i = 0; i < count; i++) {
+            await selectPrimeNgDropdownOption(page, currentDropdown.selector, i);
+            await new Promise(r => setTimeout(r, 1000));
+            const nextPrefix = `${currentPrefix}_${currentDropdown.key}-${i}`;
+            await iterateDynamicDropdowns(page, dropdowns, currentIndex + 1, downloadPath, nextPrefix);
+        }
+    } else {
+        await iterateDynamicDropdowns(page, dropdowns, currentIndex + 1, downloadPath, currentPrefix);
+    }
+}
 
 async function isDropdownActive(page: Page, selector: string): Promise<boolean> {
     return page.evaluate((sel) => {
@@ -120,10 +158,10 @@ export async function scrapeRelatorioSolicitacoes(page: Page, moduleName: string
                 for (let m = 0; m < numMuns; m++) {
                     await selectPrimeNgDropdownOption(page, SELECTORS.municipio, m);
                     await new Promise(r => setTimeout(r, 1000));
-                    await iterateTiposEEstrategias(page, downloadPath, `${radio.prefix}_uf-${u}_mun-${m}`);
+                    await iterateDynamicDropdowns(page, DYNAMIC_DROPDOWNS, 0, downloadPath, `${radio.prefix}_uf-${u}_mun-${m}`);
                 }
             } else {
-                await iterateTiposEEstrategias(page, downloadPath, `${radio.prefix}_uf-${u}`);
+                await iterateDynamicDropdowns(page, DYNAMIC_DROPDOWNS, 0, downloadPath, `${radio.prefix}_uf-${u}`);
             }
         }
     }

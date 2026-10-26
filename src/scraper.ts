@@ -14,6 +14,7 @@ import { scrapeCoberturaAcs } from "./scrapers/cobertura_acs.js";
 import { scrapeMapasSus } from "./scrapers/mapas_sus.js";
 import { scrapeHistoricoPagamentoIndex } from "./scrapers/historico_pagamento_index.js";
 import { scrapeAdesaoPse } from "./scrapers/adesao_pse.js";
+import { scrapeListagemSaudeComAgente } from "./scrapers/listagem_saude_com_agente.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -133,7 +134,10 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeHistoricoPagamentoIndex(page, moduleName, link);
                     //return;
                 } else if (link.includes('adesao/pse')) {
-                    await scrapeAdesaoPse(page, moduleName, link);
+                    //await scrapeAdesaoPse(page, moduleName, link);
+                    //return;
+                } else if (link.includes('listagem-saude-com-agente')) {
+                    await scrapeListagemSaudeComAgente(page, moduleName, link);
                     return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);

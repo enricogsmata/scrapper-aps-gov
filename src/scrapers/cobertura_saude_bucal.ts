@@ -5,6 +5,7 @@ import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
 import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption } from "../primeng_helpers.js";
 import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import { scrapeCoberturaSaudeBucalHistorico } from "./cobertura_saude_bucal_historico.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -176,6 +177,21 @@ export async function scrapeCoberturaSaudeBucal(page: Page, moduleName: string, 
                 downloadPath,
                 `consulta-${consulta.label}_unidade-${unidade.label}`
             );
+        }
+    }
+
+    log.info('Extraindo links dos relatórios históricos de saúde bucal...');
+    const historicoLinks = await page.$$eval('.relatorios-anteriores__lista a', (els) =>
+        els.map(a => (a as HTMLAnchorElement).href)
+    );
+
+    const historicoDownloadPath = path.join(downloadPath, 'historico');
+    for (const link of historicoLinks) {
+        const histPage = await page.browser().newPage();
+        try {
+            await scrapeCoberturaSaudeBucalHistorico(histPage, historicoDownloadPath, link);
+        } finally {
+            await histPage.close();
         }
     }
 

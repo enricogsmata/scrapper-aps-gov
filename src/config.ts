@@ -1,1 +1,1 @@
-export const MAIN_URL: URL = new URL('https://relatorioaps.saude.gov.br/');
+export const MAIN_URL: string = 'https://relatorioaps.saude.gov.br/';

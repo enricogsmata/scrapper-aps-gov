@@ -19,6 +19,7 @@ import { scrapeSisab } from "./scrapers/sisab.js";
 import { scrapeTria } from "./scrapers/tria.js";
 import { scrapeInformatizaAps } from "./scrapers/informatiza_aps.js";
 import { scrapeRelPagamentoPmaq } from "./scrapers/rel_pagamento_pmaq.js";
+import { scrapeSaudeHora } from "./scrapers/saude_hora.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -153,7 +154,10 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeInematizaAps(page, moduleName, link);
                     //return;
                 } else if (link.includes('relPagamentoPmaq')) {
-                    await scrapeRelPagamentoPmaq(page, moduleName, link);
+                    //await scrapeRelPagamentoPmaq(page, moduleName, link);
+                    //return;
+                } else if (link.includes('saude-hora')) {
+                    await scrapeSaudeHora(page, moduleName, link);
                     return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);

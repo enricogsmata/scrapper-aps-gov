@@ -4,7 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
 import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption } from "../primeng_helpers.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import { setupDownloadBehavior, triggerDownloadAndSave } from "../downloader.js";
 import { scrapeCoberturaHistorico } from "./cobertura_historico.js";
 
 const logger = new_logger(import.meta.url);
@@ -37,6 +37,12 @@ const GEOGRAPHIC_DROPDOWNS = [
     { key: 'municipio', selector: SELECTORS.municipio }
 ];
 
+function errorMessage(error: unknown): string {
+    // JSON.stringify(new Error(...)) retorna "{}" (message/stack não são enumeráveis),
+    // por isso o log anterior mostrava data: "{}".
+    return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+}
+
 async function isDropdownActive(page: Page, selector: string): Promise<boolean> {
     return page.evaluate((sel) => {
         const el = document.querySelector(sel);
@@ -45,6 +51,20 @@ async function isDropdownActive(page: Page, selector: string): Promise<boolean> 
         if (!dropdown) return false;
         return !dropdown.classList.contains('p-disabled') && (dropdown as HTMLElement).offsetParent !== null;
     }, selector);
+}
+
+/**
+ * Clique "de verdade" (mouse do Puppeteer) no botão. Diferente de btn.click() dentro do
+ * page.evaluate, gera um evento confiável (isTrusted) com ativação do usuário, o que evita
+ * que o Chrome bloqueie downloads disparados sem gesto do usuário.
+ */
+async function realClick(page: Page, selector: string): Promise<void> {
+    const handle = await page.waitForSelector(selector, { visible: true, timeout: 15000 });
+    if (!handle) throw new Error(`Elemento não encontrado: ${selector}`);
+    // block: 'center' evita que o header sticky cubra o botão
+    await handle.evaluate((el) => (el as HTMLElement).scrollIntoView({ behavior: 'instant', block: 'center' }));
+    await new Promise((r) => setTimeout(r, 500));
+    await handle.click();
 }
 
 async function doDownload(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
@@ -92,28 +112,22 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
             fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
             log.info(`[${filePrefix}] Dados salvos em JSON com sucesso.`);
         } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
+            log.error({ data: errorMessage(error) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
         }
     } else {
         log.info(`[${filePrefix}] Botão de download habilitado. Realizando download do arquivo...`);
-        const filesBefore = getFilesInDir(downloadPath);
-
-        await page.evaluate(() => {
-            window.scrollTo(0, document.body.scrollHeight);
-        });
-        await new Promise((r) => setTimeout(r, 1000));
-
-        await page.evaluate((sel) => {
-            const btn = document.querySelector<HTMLButtonElement>(sel);
-            btn?.scrollIntoView({ behavior: 'instant', block: 'center' });
-            btn?.click();
-        }, SELECTORS.btnDownload);
 
         try {
-            await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix, 180000);
-            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso.`);
+            const savedPath = await triggerDownloadAndSave(page, {
+                downloadPath,
+                fileName: filePrefix,
+                trigger: () => realClick(page, SELECTORS.btnDownload),
+                startTimeout: 30000,
+                finishTimeout: 180000,
+            });
+            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso: ${path.basename(savedPath)}`);
         } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha no download do arquivo:`);
+            log.error({ data: errorMessage(error) }, `[${filePrefix}] Falha no download do arquivo:`);
         }
     }
 }

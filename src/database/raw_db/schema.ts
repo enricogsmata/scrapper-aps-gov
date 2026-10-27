@@ -279,3 +279,16 @@ export const coberturaAps = mysqlTable("cobertura_aps", {
   qtCapacidadeDaEquipe: text("qt_capacidade_da_equipe"),
   coberturaAps: text("cobertura_aps"),
 });
+
+export const coberturaApsHistorico = mysqlTable("cobertura_aps_historico", {
+  id: serial("id").primaryKey(),
+  competenciaCnes: text("competencia_cnes"),
+  populacao: text("populacao"),
+  qtEapFinanciada: text("qt_eap_financiada"),
+  qtEsfFinanciada: text("qt_esf_financiada"),
+  qtCadastrosEapFinanciadas: text("qt_cadastros_eap_financiadas"),
+  qtCadastrosEsfFinanciadas: text("qt_cadastros_esf_financiadas"),
+  qtTotalDeCadastrosLimPopIbge: text("qt_total_de_cadastros_lim_pop_ibge"),
+  coberturaAps: text("cobertura_aps"),
+});
+

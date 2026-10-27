@@ -1,4 +1,5 @@
 // src/transformer.ts
+import { transformCoberturaApsHistorico } from "./transformers/cobertura-da-aps/coberturaApsHistoricoTransformer.js";
 import { transformCoberturaAps } from "./transformers/cobertura-da-aps/coberturaApsTransformer.js";
 import { transformGerenciaapsAusenciaEnvioProducao } from "./transformers/credenciamento-e-financiamento/gerenciaapsAusenciaEnvioProducaoTransformer.js";
 import { transformGerenciaapsInesCnesHomologados } from "./transformers/credenciamento-e-financiamento/gerenciaapsInesCnesHomologadosTransformer.js";
@@ -16,3 +17,4 @@ import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transforme
 //await transformGerenciaapsSolicitacoesAdesao();
 //await transformGerenciaapsOutrosIncentivos();
 await transformCoberturaAps();
+await transformCoberturaApsHistorico();

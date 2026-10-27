@@ -2,10 +2,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import pino from "pino";
 import { raw_db } from "../../database/raw_db/connection.js";
 import { mapasSusUnidadesCnesRealocadas } from "../../database/raw_db/schema.js";
 
+const execFileAsync = promisify(execFile);
 const logger = pino();
 
 function parseCsvLine(line: string): string[] {
@@ -46,6 +49,37 @@ export async function transformMapasSus(): Promise<void> {
     files = await fs.promises.readdir(dirPath);
   } catch (error) {
     logger.error({ error, dirPath }, "Diretório não encontrado ou inacessível.");
+    return;
+  }
+
+  const gpkgFiles = files.filter((file) => file.endsWith(".gpkg"));
+
+  for (const gpkgFile of gpkgFiles) {
+    const gpkgPath = path.join(dirPath, gpkgFile);
+    const csvFileName = `${path.parse(gpkgFile).name}.csv`;
+    const csvPath = path.join(dirPath, csvFileName);
+
+    try {
+      await execFileAsync("ogr2ogr", [
+        "-f",
+        "CSV",
+        csvPath,
+        gpkgPath,
+        "-lco",
+        "GEOMETRY=AS_GEOJSON",
+      ]);
+    } catch (conversionError) {
+      logger.error(
+        { conversionError, gpkgFile },
+        "Falha ao converter GPKG para CSV via ogr2ogr."
+      );
+    }
+  }
+
+  try {
+    files = await fs.promises.readdir(dirPath);
+  } catch (error) {
+    logger.error({ error, dirPath }, "Erro ao atualizar listagem do diretório.");
     return;
   }
 

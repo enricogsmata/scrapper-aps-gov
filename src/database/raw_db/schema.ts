@@ -129,3 +129,15 @@ export const gerenciaapsInesCnesHomologados = mysqlTable(
     esferaAdministrativa: text("esfera_administrativa"),
   }
 );
+
+export const gestaofederalPublicoRelatorioSolicitacoes = mysqlTable(
+  "gestaofederal_publico_relatorio_solicitacoes",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    estrategia: text("estrategia"),
+    qtdeSolicitada: text("qtde_solicitada"),
+  }
+);

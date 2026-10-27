@@ -17,6 +17,7 @@ import { scrapeAdesaoPse } from "./scrapers/adesao_pse.js";
 import { scrapeListagemSaudeComAgente } from "./scrapers/listagem_saude_com_agente.js";
 import { scrapeSisab } from "./scrapers/sisab.js";
 import { scrapeTria } from "./scrapers/tria.js";
+import { scrapeInformatizaAps } from "./scrapers/informatiza_aps.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -145,7 +146,10 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeSisab(page, moduleName, link);
                     //return;
                 } else if (link.includes('tria')) {
-                    await scrapeTria(page, moduleName, link);
+                    //await scrapeTria(page, moduleName, link);
+                    //return;
+                } else if (link.includes('informatiza-aps')) {
+                    await scrapeInformatizaAps(page, moduleName, link);
                     return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);

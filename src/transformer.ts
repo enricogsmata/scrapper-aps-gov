@@ -1,6 +1,7 @@
 // src/transformer.ts
 import { transformCoberturaApsHistorico } from "./transformers/cobertura-da-aps/coberturaApsHistoricoTransformer.js";
 import { transformCoberturaAps } from "./transformers/cobertura-da-aps/coberturaApsTransformer.js";
+import { transformCoberturaSaudeBucalV2 } from "./transformers/cobertura-da-aps/coberturaSaudeBucalV2Transformer.js";
 import { transformGerenciaapsAusenciaEnvioProducao } from "./transformers/credenciamento-e-financiamento/gerenciaapsAusenciaEnvioProducaoTransformer.js";
 import { transformGerenciaapsInesCnesHomologados } from "./transformers/credenciamento-e-financiamento/gerenciaapsInesCnesHomologadosTransformer.js";
 import { transformGerenciaapsOutrosIncentivos } from "./transformers/credenciamento-e-financiamento/gerenciaapsOutrosIncentivosTransformer.js";
@@ -16,5 +17,6 @@ import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transforme
 //await transformGestaofederalPublicoRelatorioSolicitacoes();
 //await transformGerenciaapsSolicitacoesAdesao();
 //await transformGerenciaapsOutrosIncentivos();
-await transformCoberturaAps();
-await transformCoberturaApsHistorico();
+//await transformCoberturaAps();
+//await transformCoberturaApsHistorico();
+await transformCoberturaSaudeBucalV2();

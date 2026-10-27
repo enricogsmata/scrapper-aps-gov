@@ -292,3 +292,21 @@ export const coberturaApsHistorico = mysqlTable("cobertura_aps_historico", {
   coberturaAps: text("cobertura_aps"),
 });
 
+export const coberturaSaudeBucalV2 = mysqlTable("cobertura_saude_bucal_v2", {
+  id: serial("id").primaryKey(),
+  compCnes: text("comp_cnes"),
+  populacao: text("populacao"),
+  anoDeReferencia: text("ano_de_referencia"),
+  qtEsb40h: text("qt_esb_40h"),
+  qtEsb30h: text("qt_esb_30h"),
+  qtEsb20h: text("qt_esb_20h"),
+  qtParametroCadastroEquipeSb: text("qt_parametro_cadastro_equipe_sb"),
+  coberturaSbSf: text("cobertura_sb_sf"),
+  qtEsfr: text("qt_esfr"),
+  qtEcr: text("qt_ecr"),
+  qtEapp: text("qt_eapp"),
+  qtSisabCadastroEquipeEsfrEcrEapp: text("qt_sisab_cadastro_equipe_esfr_ecr_eapp"),
+  qtParametroCadastroEquipeSbAps: text("qt_parametro_cadastro_equipe_sb_aps"),
+  coberturaSbAps: text("cobertura_sb_aps"),
+});
+

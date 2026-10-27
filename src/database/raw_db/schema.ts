@@ -259,3 +259,23 @@ export const gerenciaapsOutrosIncentivosPrt39782021 = mysqlTable(
     cumpriuRequisitoCusteio: text("cumpriu_requisito_custeio"),
   }
 );
+
+export const coberturaAps = mysqlTable("cobertura_aps", {
+  id: serial("id").primaryKey(),
+  compCnes: text("comp_cnes"),
+  populacao: text("populacao"),
+  qtEsf: text("qt_esf"),
+  qtEap20hs: text("qt_eap_20hs"),
+  qtEap30hs: text("qt_eap_30hs"),
+  qtEcr: text("qt_ecr"),
+  qtCadastroEcr: text("qt_cadastro_ecr"),
+  qtEapp20hs: text("qt_eapp_20hs"),
+  qtCadastroEapp20hs: text("qt_cadastro_eapp_20hs"),
+  qtEapp30hs: text("qt_eapp_30hs"),
+  qtCadastroEapp30hs: text("qt_cadastro_eapp_30hs"),
+  qtEsfr: text("qt_esfr"),
+  qtCadastroEsfr: text("qt_cadastro_esfr"),
+  qtCadastrosDasEcrEEapp: text("qt_cadastros_das_ecr_e_eapp"),
+  qtCapacidadeDaEquipe: text("qt_capacidade_da_equipe"),
+  coberturaAps: text("cobertura_aps"),
+});

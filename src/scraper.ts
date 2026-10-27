@@ -108,65 +108,65 @@ export async function runScrapper(): Promise<void> {
 
             for (const link of module.links) {
                 if (link.includes('ausencia-envio-producao')) {
-                    //await scrapeAusenciaEnvioProducao(page, moduleName, link);
-                    //return;
+                    await scrapeAusenciaEnvioProducao(page, moduleName, link);
+                    return;
                 } else if (link.includes('pagamento')) {
-                    //await scrapePagamento(page, moduleName, link);
-                    //return;
+                    await scrapePagamento(page, moduleName, link);
+                    return;
                 } else if (link.includes('ines-cnes-homologados')) {
-                    //await scrapeInesCnesHomologados(page, moduleName, link);
-                    //return;
+                    await scrapeInesCnesHomologados(page, moduleName, link);
+                    return;
                 } else if (link.includes('relatorio-solicitacoes')) {
-                    //await scrapeRelatorioSolicitacoes(page, moduleName, link);
-                    //return;
+                    await scrapeRelatorioSolicitacoes(page, moduleName, link);
+                    return;
                 } else if (link.includes('solicitacoes-adesao')) {
-                    //await scrapeSolicitacoesAdesao(page, moduleName, link);
-                    //return;
+                    await scrapeSolicitacoesAdesao(page, moduleName, link);
+                    return;
                 } else if (link.includes('outros-incentivos')) {
-                    //await scrapeOutrosIncentivos(page, moduleName, link);
-                    //return;
+                    await scrapeOutrosIncentivos(page, moduleName, link);
+                    return;
                 } else if (link.includes('cobertura/aps')) {
-                    //await scrapeCoberturaAps(page, moduleName, link);
-                    //return;
+                    await scrapeCoberturaAps(page, moduleName, link);
+                    return;
                 } else if (link.includes('cobertura/saude-bucal')) {
-                    //await scrapeCoberturaSaudeBucal(page, moduleName, link);
-                    //return;
+                    await scrapeCoberturaSaudeBucal(page, moduleName, link);
+                    return;
                 } else if (link.includes('cobertura/acs')) {
-                    //await scrapeCoberturaAcs(page, moduleName, link);
-                    //return;
+                    await scrapeCoberturaAcs(page, moduleName, link);
+                    return;
                 } else if (link.includes('mapas.sus.c3sl.ufpr.br')) {
-                    //await scrapeMapasSus(page, moduleName, link);
-                    //return;
+                    await scrapeMapasSus(page, moduleName, link);
+                    return;
                 } else if (link.includes('relHistoricoPagamentoIndex')) {
-                    //await scrapeHistoricoPagamentoIndex(page, moduleName, link);
-                    //return;
+                    await scrapeHistoricoPagamentoIndex(page, moduleName, link);
+                    return;
                 } else if (link.includes('adesao/pse')) {
-                    //await scrapeAdesaoPse(page, moduleName, link);
-                    //return;
+                    await scrapeAdesaoPse(page, moduleName, link);
+                    return;
                 } else if (link.includes('listagem-saude-com-agente')) {
-                    //await scrapeListagemSaudeComAgente(page, moduleName, link);
-                    //return;
+                    await scrapeListagemSaudeComAgente(page, moduleName, link);
+                    return;
                 } else if (link.includes('sisab.saude.gov.br')) {
-                    //await scrapeSisab(page, moduleName, link);
-                    //return;
+                    await scrapeSisab(page, moduleName, link);
+                    return;
                 } else if (link.includes('tria')) {
-                    //await scrapeTria(page, moduleName, link);
-                    //return;
+                    await scrapeTria(page, moduleName, link);
+                    return;
                 } else if (link.includes('informatiza-aps')) {
-                    //await scrapeInematizaAps(page, moduleName, link);
-                    //return;
+                    await scrapeInformatizaAps(page, moduleName, link);
+                    return;
                 } else if (link.includes('relPagamentoPmaq')) {
-                    //await scrapeRelPagamentoPmaq(page, moduleName, link);
-                    //return;
+                    await scrapeRelPagamentoPmaq(page, moduleName, link);
+                    return;
                 } else if (link.includes('saude-hora')) {
-                    //await scrapeSaudeHora(page, moduleName, link);
-                    //return;
+                    await scrapeSaudeHora(page, moduleName, link);
+                    return;
                 } else if (link.includes('praticas-assistenciais')) {
                     await scrapePraticasAssistenciais(page, moduleName, link);
                     return;
                 } else if (link.includes('siaps.saude.gov.br')) {
-                    //await scrapeSiapsPublico(page, moduleName, link);
-                    //return;
+                    await scrapeSiapsPublico(page, moduleName, link);
+                    return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);
                     continue;

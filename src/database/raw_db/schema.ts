@@ -155,3 +155,107 @@ export const gerenciaapsSolicitacoesAdesao = mysqlTable(
     situacaoDaAdesao: text("situacao_da_adesao"),
   }
 );
+
+export const gerenciaapsOutrosIncentivosPrt32632019 = mysqlTable(
+  "gerenciaaps_outros_incentivos_prt_3263_2019",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    ibge: text("ibge"),
+    municipio: text("municipio"),
+    ine: text("ine"),
+  }
+);
+
+export const gerenciaapsOutrosIncentivosPrt3312022 = mysqlTable(
+  "gerenciaaps_outros_incentivos_prt_331_2022",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    compCnes: text("comp_cnes"),
+    cnesSolicitado: text("cnes_solicitado"),
+    tipoDaUnidade: text("tipo_da_unidade"),
+    unidadeAtiva: text("unidade_ativa"),
+    unidadeValida: text("unidade_valida"),
+    classificacaoValidada: text("classificacao_validada"),
+    qtdeDeMedicos: text("qtde_de_medicos"),
+    qtdeDeEnfermeiros: text("qtde_de_enfermeiros"),
+    qtdeDeTecnicoAuxiliarEnfermagem: text("qtde_de_tecnico_auxiliar_enfermagem"),
+    cargaHorariaDeMedicos: text("carga_horaria_de_medicos"),
+    cargaHorariaDeEnfermeiros: text("carga_horaria_de_enfermeiros"),
+    cargaHorariaDeTecnicoAuxiliarEnfermagem: text("carga_horaria_de_tecnico_auxiliar_enfermagem"),
+    cumpriuRequisitoCusteio: text("cumpriu_requisito_custeio"),
+  }
+);
+
+export const gerenciaapsOutrosIncentivosPrt6502021 = mysqlTable(
+  "gerenciaaps_outros_incentivos_prt_650_2021",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    compCnes: text("comp_cnes"),
+    cnesSolicitado: text("cnes_solicitado"),
+    tipoDaUnidade: text("tipo_da_unidade"),
+    unidadeAtiva: text("unidade_ativa"),
+    unidadeValida: text("unidade_valida"),
+    classificacaoValidada: text("classificacao_validada"),
+    qtdeDeMedicos: text("qtde_de_medicos"),
+    qtdeDeEnfermeiros: text("qtde_de_enfermeiros"),
+    qtdeDeTecnicoAuxiliarEnfermagem: text("qtde_de_tecnico_auxiliar_enfermagem"),
+    cargaHorariaDeMedicos: text("carga_horaria_de_medicos"),
+    cargaHorariaDeEnfermeiros: text("carga_horaria_de_enfermeiros"),
+    cargaHorariaDeTecnicoAuxiliarEnfermagem: text("carga_horaria_de_tecnico_auxiliar_enfermagem"),
+    cumpriuRequisitoCusteio: text("cumpriu_requisito_custeio"),
+    contempladoPortaria650: text("contemplado_portaria_650"),
+  }
+);
+
+export const gerenciaapsOutrosIncentivosPrt20102021 = mysqlTable(
+  "gerenciaaps_outros_incentivos_prt_2010_2021",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    compCnes: text("comp_cnes"),
+    cnesSolicitado: text("cnes_solicitado"),
+    tipoDaUnidade: text("tipo_da_unidade"),
+    unidadeAtiva: text("unidade_ativa"),
+    unidadeValida: text("unidade_valida"),
+    classificacaoValidada: text("classificacao_validada"),
+    qtdeDeMedicos: text("qtde_de_medicos"),
+    qtdeDeEnfermeiros: text("qtde_de_enfermeiros"),
+    qtdeDeTecnicoAuxiliarEnfermagem: text("qtde_de_tecnico_auxiliar_enfermagem"),
+    cargaHorariaDeMedicos: text("carga_horaria_de_medicos"),
+    cargaHorariaDeEnfermeiros: text("carga_horaria_de_enfermeiros"),
+    cargaHorariaDeTecnicoAuxiliarEnfermagem: text("carga_horaria_de_tecnico_auxiliar_enfermagem"),
+    cumpriuRequisitoCusteio: text("cumpriu_requisito_custeio"),
+  }
+);
+
+export const gerenciaapsOutrosIncentivosPrt39782021 = mysqlTable(
+  "gerenciaaps_outros_incentivos_prt_3978_2021",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    compCnes: text("comp_cnes"),
+    cnesSolicitado: text("cnes_solicitado"),
+    tipoDaUnidade: text("tipo_da_unidade"),
+    unidadeAtiva: text("unidade_ativa"),
+    unidadeValida: text("unidade_valida"),
+    classificacaoValidada: text("classificacao_validada"),
+    qtdeDeMedicos: text("qtde_de_medicos"),
+    qtdeDeEnfermeiros: text("qtde_de_enfermeiros"),
+    qtdeDeTecnicoAuxiliarEnfermagem: text("qtde_de_tecnico_auxiliar_enfermagem"),
+    cargaHorariaDeMedicos: text("carga_horaria_de_medicos"),
+    cargaHorariaDeEnfermeiros: text("carga_horaria_de_enfermeiros"),
+    cargaHorariaDeTecnicoAuxiliarEnfermagem: text("carga_horaria_de_tecnico_auxiliar_enfermagem"),
+    cumpriuRequisitoCusteio: text("cumpriu_requisito_custeio"),
+  }
+);

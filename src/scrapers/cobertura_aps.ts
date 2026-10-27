@@ -73,7 +73,16 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
             { timeout: 60000 }
         );
 
-        await page.click(SELECTORS.btnVerTela);
+        await page.evaluate(() => {
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+        await new Promise((r) => setTimeout(r, 1000));
+
+        await page.evaluate((sel) => {
+            const btn = document.querySelector<HTMLButtonElement>(sel);
+            btn?.scrollIntoView({ behavior: 'instant', block: 'center' });
+            btn?.click();
+        }, SELECTORS.btnVerTela);
 
         try {
             const response = await responsePromise;
@@ -88,9 +97,20 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
     } else {
         log.info(`[${filePrefix}] Botão de download habilitado. Realizando download do arquivo...`);
         const filesBefore = getFilesInDir(downloadPath);
-        await page.click(SELECTORS.btnDownload);
+
+        await page.evaluate(() => {
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+        await new Promise((r) => setTimeout(r, 1000));
+
+        await page.evaluate((sel) => {
+            const btn = document.querySelector<HTMLButtonElement>(sel);
+            btn?.scrollIntoView({ behavior: 'instant', block: 'center' });
+            btn?.click();
+        }, SELECTORS.btnDownload);
+
         try {
-            await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix);
+            await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix, 180000);
             log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso.`);
         } catch (error) {
             log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha no download do arquivo:`);

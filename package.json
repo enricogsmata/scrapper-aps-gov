@@ -1,6 +1,7 @@
 {
   "type": "module",
   "dependencies": {
+    "adm-zip": "^0.6.1",
     "dotenv": "^18.0.9",
     "drizzle-orm": "^0.45.4",
     "env": "^0.0.2",

@@ -120,10 +120,10 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeRelatorioSolicitacoes(page, moduleName, link);
                     //continue;
                 } else if (link.includes('solicitacoes-adesao')) {
-                    await scrapeSolicitacoesAdesao(page, moduleName, link);
-                    continue;
+                    //await scrapeSolicitacoesAdesao(page, moduleName, link);
+                    //continue;
                 } else if (link.includes('outros-incentivos')) {
-                    await scrapeOutrosIncentivos(page, moduleName, link);
+                    //await scrapeOutrosIncentivos(page, moduleName, link);
                     continue;
                 } else if (link.includes('cobertura/aps')) {
                     await scrapeCoberturaAps(page, moduleName, link);

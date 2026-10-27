@@ -15,6 +15,7 @@ import { scrapeMapasSus } from "./scrapers/mapas_sus.js";
 import { scrapeHistoricoPagamentoIndex } from "./scrapers/historico_pagamento_index.js";
 import { scrapeAdesaoPse } from "./scrapers/adesao_pse.js";
 import { scrapeListagemSaudeComAgente } from "./scrapers/listagem_saude_com_agente.js";
+import { scrapeSisab } from "./scrapers/sisab.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -137,7 +138,10 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeAdesaoPse(page, moduleName, link);
                     //return;
                 } else if (link.includes('listagem-saude-com-agente')) {
-                    await scrapeListagemSaudeComAgente(page, moduleName, link);
+                    //await scrapeListagemSaudeComAgente(page, moduleName, link);
+                    //return;
+                } else if (link.includes('sisab.saude.gov.br')) {
+                    await scrapeSisab(page, moduleName, link);
                     return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);

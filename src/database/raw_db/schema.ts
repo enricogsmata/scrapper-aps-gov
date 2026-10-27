@@ -310,3 +310,27 @@ export const coberturaSaudeBucalV2 = mysqlTable("cobertura_saude_bucal_v2", {
   coberturaSbAps: text("cobertura_sb_aps"),
 });
 
+export const coberturaAcs = mysqlTable("cobertura_acs", {
+  id: serial("id").primaryKey(),
+  compCnes: text("comp_cnes"),
+  populacao: text("populacao"),
+  qtAcsAtiva: text("qt_acs_ativa"),
+  qtAcsCobertura: text("qt_acs_cobertura"),
+  qtPopulacaoCoberta: text("qt_populacao_coberta"),
+  coberturaAcs: text("cobertura_acs"),
+});
+
+export const coberturaSaudeBucalV2Historico = mysqlTable(
+  "cobertura_saude_bucal_v2_historico",
+  {
+    id: serial("id").primaryKey(),
+    compCnes: text("comp_cnes"),
+    populacao: text("populacao"),
+    numEsfsbCob: text("num_esfsb_cob"),
+    estimPopCobEsfsb: text("estim_pop_cob_esfsb"),
+    coberturaEsfsb: text("cobertura_esfsb"),
+    estimPopCobSbAb: text("estim_pop_cob_sb_ab"),
+    coberturaSbAb: text("cobertura_sb_ab"),
+  }
+);
+

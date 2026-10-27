@@ -129,8 +129,8 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeCoberturaAps(page, moduleName, link);
                     //continue;
                 } else if (link.includes('cobertura/saude-bucal')) {
-                    await scrapeCoberturaSaudeBucal(page, moduleName, link);
-                    continue;
+                    //await scrapeCoberturaSaudeBucal(page, moduleName, link);
+                    //continue;
                 } else if (link.includes('cobertura/acs')) {
                     await scrapeCoberturaAcs(page, moduleName, link);
                     continue;

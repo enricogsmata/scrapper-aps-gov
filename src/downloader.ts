@@ -310,3 +310,39 @@ export async function triggerDownloadAndSave(page: Page, opts: TriggerDownloadOp
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Atalho para os scrapers: clica num botão e salva o arquivo baixado
+// ---------------------------------------------------------------------------
+
+export interface DownloadByClickOptions {
+    /** Seletor CSS do botão de download. */
+    selector: string;
+    downloadPath: string;
+    /** Nome final (sem extensão). */
+    fileName: string;
+    startTimeout?: number;
+    finishTimeout?: number;
+}
+
+/**
+ * Substitui o trio "filesBefore + btn.click() no evaluate + waitForNewDownloadAndRename".
+ * Usa clique real do mouse (evento confiável) e detecção por eventos do Chrome, sem depender
+ * de comparar nomes de arquivos na pasta. Retorna o caminho do arquivo salvo.
+ */
+export async function downloadByClick(page: Page, opts: DownloadByClickOptions): Promise<string> {
+    return triggerDownloadAndSave(page, {
+        downloadPath: opts.downloadPath,
+        fileName: opts.fileName,
+        startTimeout: opts.startTimeout,
+        finishTimeout: opts.finishTimeout,
+        trigger: async () => {
+            const handle = await page.waitForSelector(opts.selector, { visible: true, timeout: 15000 });
+            if (!handle) throw new Error(`Elemento não encontrado: ${opts.selector}`);
+            // block: 'center' evita que o header sticky cubra o botão
+            await handle.evaluate((el) => (el as HTMLElement).scrollIntoView({ behavior: 'instant', block: 'center' }));
+            await sleep(500);
+            await handle.click();
+        },
+    });
+}

@@ -108,8 +108,8 @@ export async function runScrapper(): Promise<void> {
 
             for (const link of module.links) {
                 if (link.includes('ausencia-envio-producao')) {
-                    await scrapeAusenciaEnvioProducao(page, moduleName, link);
-                    continue;
+                    //await scrapeAusenciaEnvioProducao(page, moduleName, link);
+                    //continue;
                 } else if (link.includes('pagamento')) {
                     await scrapePagamento(page, moduleName, link);
                     continue;

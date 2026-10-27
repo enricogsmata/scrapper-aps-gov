@@ -5,8 +5,13 @@ import { Page } from "puppeteer";
  * Retorna a quantidade de opções disponíveis no dropdown do PrimeNG.
  */
 export async function getPrimeNgDropdownOptionsCount(page: Page, dropdownSelector: string): Promise<number> {
-    await page.waitForSelector(`${dropdownSelector} .p-dropdown-trigger`, { visible: true });
-    await page.click(`${dropdownSelector} .p-dropdown-trigger`);
+    await page.waitForSelector(dropdownSelector, { visible: true });
+
+    await page.evaluate((sel) => {
+        const trigger = document.querySelector<HTMLElement>(`${sel} .p-dropdown-trigger`) ||
+            document.querySelector<HTMLElement>(`${sel} .p-dropdown`);
+        trigger?.click();
+    }, dropdownSelector);
 
     const panelSelector = 'body > .p-overlay .p-dropdown-panel, body > .p-dropdown-panel, .p-dropdown-panel';
     await page.waitForSelector(panelSelector, { visible: true, timeout: 15000 });
@@ -34,8 +39,13 @@ export async function getPrimeNgDropdownOptionsCount(page: Page, dropdownSelecto
  * Seleciona uma opção específica baseada no índice do dropdown PrimeNG.
  */
 export async function selectPrimeNgDropdownOption(page: Page, dropdownSelector: string, index: number): Promise<void> {
-    await page.waitForSelector(`${dropdownSelector} .p-dropdown-trigger`, { visible: true });
-    await page.click(`${dropdownSelector} .p-dropdown-trigger`);
+    await page.waitForSelector(dropdownSelector, { visible: true });
+
+    await page.evaluate((sel) => {
+        const trigger = document.querySelector<HTMLElement>(`${sel} .p-dropdown-trigger`) ||
+            document.querySelector<HTMLElement>(`${sel} .p-dropdown`);
+        trigger?.click();
+    }, dropdownSelector);
 
     const panelSelector = 'body > .p-overlay .p-dropdown-panel, body > .p-dropdown-panel, .p-dropdown-panel';
     await page.waitForSelector(panelSelector, { visible: true, timeout: 15000 });
@@ -57,7 +67,7 @@ export async function selectPrimeNgDropdownOption(page: Page, dropdownSelector: 
         },
         { timeout: 10000 },
         panelSelector
-    ).catch(() => {});
+    ).catch(() => { });
 }
 
 /**

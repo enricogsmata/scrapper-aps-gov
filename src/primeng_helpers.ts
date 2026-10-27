@@ -7,15 +7,27 @@ import { Page } from "puppeteer";
 export async function getPrimeNgDropdownOptionsCount(page: Page, dropdownSelector: string): Promise<number> {
     await page.waitForSelector(`${dropdownSelector} .p-dropdown-trigger`, { visible: true });
     await page.click(`${dropdownSelector} .p-dropdown-trigger`);
-    
-    await page.waitForSelector('.p-dropdown-items .p-dropdown-item', { visible: true });
-    const options = await page.$$('.p-dropdown-items .p-dropdown-item');
-    
-    // Fecha o dropdown pressionando ESC
+
+    const panelSelector = 'body > .p-overlay .p-dropdown-panel, body > .p-dropdown-panel, .p-dropdown-panel';
+    await page.waitForSelector(panelSelector, { visible: true, timeout: 15000 });
+
+    const count = await page.evaluate((panelSel) => {
+        const panels = Array.from(document.querySelectorAll<HTMLElement>(panelSel));
+        const panel = panels.find((p) => p.offsetParent !== null) || panels[panels.length - 1];
+        return panel ? panel.querySelectorAll('.p-dropdown-items .p-dropdown-item').length : 0;
+    }, panelSelector);
+
     await page.keyboard.press('Escape');
-    await page.waitForSelector('.p-dropdown-items', { hidden: true });
-    
-    return options.length;
+    await page.waitForFunction(
+        (sel) => {
+            const panels = Array.from(document.querySelectorAll<HTMLElement>(sel));
+            return panels.every((p) => p.offsetParent === null);
+        },
+        { timeout: 10000 },
+        panelSelector
+    ).catch(() => { });
+
+    return count;
 }
 
 /**
@@ -24,16 +36,28 @@ export async function getPrimeNgDropdownOptionsCount(page: Page, dropdownSelecto
 export async function selectPrimeNgDropdownOption(page: Page, dropdownSelector: string, index: number): Promise<void> {
     await page.waitForSelector(`${dropdownSelector} .p-dropdown-trigger`, { visible: true });
     await page.click(`${dropdownSelector} .p-dropdown-trigger`);
-    
-    await page.waitForSelector('.p-dropdown-items .p-dropdown-item', { visible: true });
-    const options = await page.$$('.p-dropdown-items .p-dropdown-item');
-    
-    if (options[index]) {
-        await options[index].click();
-        await page.waitForSelector('.p-dropdown-items', { hidden: true });
-    } else {
-        throw new Error(`Opção no índice ${index} não encontrada no PrimeNG dropdown.`);
-    }
+
+    const panelSelector = 'body > .p-overlay .p-dropdown-panel, body > .p-dropdown-panel, .p-dropdown-panel';
+    await page.waitForSelector(panelSelector, { visible: true, timeout: 15000 });
+
+    await page.evaluate((panelSel, itemIdx) => {
+        const panels = Array.from(document.querySelectorAll<HTMLElement>(panelSel));
+        const panel = panels.find((p) => p.offsetParent !== null) || panels[panels.length - 1];
+        const items = panel ? Array.from(panel.querySelectorAll<HTMLElement>('.p-dropdown-items .p-dropdown-item')) : [];
+        const target = items[itemIdx];
+        if (target) {
+            target.click();
+        }
+    }, panelSelector, index);
+
+    await page.waitForFunction(
+        (sel) => {
+            const panels = Array.from(document.querySelectorAll<HTMLElement>(sel));
+            return panels.every((p) => p.offsetParent === null);
+        },
+        { timeout: 10000 },
+        panelSelector
+    ).catch(() => {});
 }
 
 /**

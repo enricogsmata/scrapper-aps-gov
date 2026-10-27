@@ -114,8 +114,8 @@ export async function runScrapper(): Promise<void> {
                     //await scrapePagamento(page, moduleName, link);
                     //continue;
                 } else if (link.includes('ines-cnes-homologados')) {
-                    await scrapeInesCnesHomologados(page, moduleName, link);
-                    continue;
+                    //await scrapeInesCnesHomologados(page, moduleName, link);
+                    //continue;
                 } else if (link.includes('relatorio-solicitacoes')) {
                     await scrapeRelatorioSolicitacoes(page, moduleName, link);
                     continue;

@@ -113,3 +113,19 @@ export const gerenciaapsPagamentoHistorico = mysqlTable(
     valorTotal: text("valor_total"),
   }
 );
+
+export const gerenciaapsInesCnesHomologados = mysqlTable(
+  "gerenciaaps_ines_cnes_homologados",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    ine: text("ine"),
+    codigoDoTipoDeEquipe: text("codigo_do_tipo_de_equipe"),
+    tipoDeEquipe: text("tipo_de_equipe"),
+    subtipoDeEquipe: text("subtipo_de_equipe"),
+    portaria: text("portaria"),
+    esferaAdministrativa: text("esfera_administrativa"),
+  }
+);

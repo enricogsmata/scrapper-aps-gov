@@ -21,6 +21,7 @@ import { scrapeInformatizaAps } from "./scrapers/informatiza_aps.js";
 import { scrapeRelPagamentoPmaq } from "./scrapers/rel_pagamento_pmaq.js";
 import { scrapeSaudeHora } from "./scrapers/saude_hora.js";
 import { scrapeSiapsPublico } from "./scrapers/siaps_publico.js";
+import { scrapePraticasAssistenciais } from "./scrapers/praticas_assistenciais.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -160,9 +161,12 @@ export async function runScrapper(): Promise<void> {
                 } else if (link.includes('saude-hora')) {
                     //await scrapeSaudeHora(page, moduleName, link);
                     //return;
-                } else if (link.includes('siaps.saude.gov.br')) {
-                    await scrapeSiapsPublico(page, moduleName, link);
+                } else if (link.includes('praticas-assistenciais')) {
+                    await scrapePraticasAssistenciais(page, moduleName, link);
                     return;
+                } else if (link.includes('siaps.saude.gov.br')) {
+                    //await scrapeSiapsPublico(page, moduleName, link);
+                    //return;
                 } else {
                     log.info(`Link não mapeado para scraper específico: ${link}`);
                     continue;

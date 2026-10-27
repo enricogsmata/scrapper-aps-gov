@@ -141,3 +141,17 @@ export const gestaofederalPublicoRelatorioSolicitacoes = mysqlTable(
     qtdeSolicitada: text("qtde_solicitada"),
   }
 );
+
+export const gerenciaapsSolicitacoesAdesao = mysqlTable(
+  "gerenciaaps_solicitacoes_adesao",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    gestao: text("gestao"),
+    numeroDaSolicitacao: text("numero_da_solicitacao"),
+    programa: text("programa"),
+    situacaoDaAdesao: text("situacao_da_adesao"),
+  }
+);

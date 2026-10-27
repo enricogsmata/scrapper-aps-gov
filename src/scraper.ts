@@ -117,8 +117,8 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeInesCnesHomologados(page, moduleName, link);
                     //continue;
                 } else if (link.includes('relatorio-solicitacoes')) {
-                    await scrapeRelatorioSolicitacoes(page, moduleName, link);
-                    continue;
+                    //await scrapeRelatorioSolicitacoes(page, moduleName, link);
+                    //continue;
                 } else if (link.includes('solicitacoes-adesao')) {
                     await scrapeSolicitacoesAdesao(page, moduleName, link);
                     continue;

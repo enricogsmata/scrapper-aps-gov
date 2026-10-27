@@ -22,14 +22,14 @@
     "raw:generate": "drizzle-kit generate --config=drizzle.raw.config.ts",
     "raw:migrate": "drizzle-kit migrate --config=drizzle.raw.config.ts",
     "raw:push": "drizzle-kit push --config=drizzle.raw.config.ts",
-    "raw:update": "clear && npm run raw:generate && npm run raw:migrate && npm run raw:push",
+    "raw:update": "cls && npm run raw:generate && npm run raw:migrate && npm run raw:push",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "db:push": "drizzle-kit push --config=drizzle.config.ts",
     "db:update": "npm run db:generate && npm run db:migrate && npm run db:push",
-    "rt": "clear && tsx ./src/transformer.ts",
+    "rt": "npm run raw:update && cls && tsx ./src/transformer.ts && npm run git",
     "git": "git add . && git commit -m ",
     "cli": "tsx ./src/index-cli.ts",
-    "app": "tsx ./src/index.ts"
+    "app": "clear && tsx ./src/index.ts"
   }
 }

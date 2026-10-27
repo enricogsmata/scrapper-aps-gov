@@ -132,8 +132,8 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeCoberturaSaudeBucal(page, moduleName, link);
                     //continue;
                 } else if (link.includes('cobertura/acs')) {
-                    await scrapeCoberturaAcs(page, moduleName, link);
-                    continue;
+                    //await scrapeCoberturaAcs(page, moduleName, link);
+                    //continue;
                 } else if (link.includes('mapas.sus.c3sl.ufpr.br')) {
                     await scrapeMapasSus(page, moduleName, link);
                     continue;

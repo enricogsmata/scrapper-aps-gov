@@ -27,6 +27,7 @@ import { transformGerenciaapsSolicitacoesAdesao } from "./transformers/credencia
 import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transformers/credenciamento-e-financiamento/gestaofederalPublicoRelatorioSolicitacoesTransformer.js";
 import { transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisAtendimentosIndividuaisTransformer.js";
 import { transformSiapsPublicoPraticasAssistenciaisTab1 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab1Transformer.js";
+import { transformSiapsPublicoPraticasAssistenciaisTab2 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab2Transformer.js";
 import { transformSiapsPublico } from "./transformers/siaps/siapsPublicoTransformer.js";
 
 //await transformGerenciaapsAusenciaEnvioProducao();
@@ -57,4 +58,5 @@ import { transformSiapsPublico } from "./transformers/siaps/siapsPublicoTransfor
 //await transformAcoesEProgramasDescontinuadosAdesaoSaudeHora();
 //await transformSiapsPublico();
 //await transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais();
-await transformSiapsPublicoPraticasAssistenciaisTab1();
+//await transformSiapsPublicoPraticasAssistenciaisTab1();
+await transformSiapsPublicoPraticasAssistenciaisTab2();

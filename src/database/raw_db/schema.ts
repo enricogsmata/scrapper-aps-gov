@@ -678,3 +678,14 @@ export const siapsPublicoPraticasAssistenciaisTab1 = mysqlTable(
   }
 );
 
+export const siapsPublicoPraticasAssistenciaisTab2 = mysqlTable(
+  "siaps_publico_praticas_assistenciais_tab_2",
+  {
+    id: serial("id").primaryKey(),
+    brasil: text("brasil"),
+    masculino: text("masculino"),
+    feminino: text("feminino"),
+    total: text("total"),
+  }
+);
+

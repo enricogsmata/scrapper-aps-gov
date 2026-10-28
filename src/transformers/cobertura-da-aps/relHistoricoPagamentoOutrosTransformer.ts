@@ -115,7 +115,7 @@ async function processCsvBuffer(
       cnrIiiCreden: getValue(row, "cnriiicreden"),
       cnrIInformado: getValue(row, "cnriinformado"),
       cnrIiInformado: getValue(row, "cnriiinformado"),
-      cnrIiiInformado: getValue(row, "cnriiiformado"),
+      cnrIiiInformado: getValue(row, "cnriiiinformado"),
       cnrIPago: getValue(row, "cnripago"),
       cnrIiPago: getValue(row, "cnriipago"),
       cnrIiiPago: getValue(row, "cnriiipago"),

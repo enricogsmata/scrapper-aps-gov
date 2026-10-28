@@ -606,3 +606,24 @@ export const acoesEProgramasDescontinuadosInformatizaAps = mysqlTable(
   }
 );
 
+export const acoesEProgramasRelpagamentopmaq = mysqlTable(
+  "acoes_e_programas_relpagamentopmaq",
+  {
+    id: serial("id").primaryKey(),
+    competenciaCnes: text("competencia_cnes"),
+    competenciaFinanceira: text("competencia_financeira"),
+    uf: text("uf"),
+    ibge: text("ibge"),
+    municipio: text("municipio"),
+    qntEsf: text("qnt_esf"),
+    qntEsb: text("qnt_esb"),
+    qntNasf: text("qnt_nasf"),
+    valorEsf: text("valor_esf"),
+    valorEsb: text("valor_esb"),
+    valorNasf: text("valor_nasf"),
+    subtotal: text("subtotal"),
+    desconto: text("desconto"),
+    total: text("total"),
+  }
+);
+

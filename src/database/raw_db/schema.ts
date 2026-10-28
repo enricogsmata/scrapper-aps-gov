@@ -536,3 +536,17 @@ export const sisabValidacao = mysqlTable("sisab_validacao", {
   total: text("total"),
 });
 
+export const acoesEProgramasIndicadorPainel = mysqlTable(
+  "acoes_e_programas_indicador_painel",
+  {
+    id: serial("id").primaryKey(),
+    preNatal6Consultas: text("pre_natal_6_consultas"),
+    preNatalSifilisEHiv: text("pre_natal_sifilis_e_hiv"),
+    gestantesSaudeBucal: text("gestantes_saude_bucal"),
+    coberturaCitopatologico: text("cobertura_citopatologico"),
+    coberturaPolioEPenta: text("cobertura_polio_e_penta"),
+    hipertensaoPaAferida: text("hipertensao_pa_aferida"),
+    diabetesHemoglobinaGlicada: text("diabetes_hemoglobina_glicada"),
+  }
+);
+

@@ -32,6 +32,6 @@
     "db:update": "npm run db:generate && npm run db:migrate && npm run db:push",
     "rt": "npm run raw:update && cls && tsx ./src/transformer.ts",
     "git": "git add . && git commit -m ",
-    "app": "clear && tsx ./src/index.ts"
+    "app": "cls && tsx ./src/index.ts"
   }
 }

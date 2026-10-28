@@ -135,9 +135,9 @@ export async function runScrapper(): Promise<void> {
                     } else if (link.includes('adesao/pse')) {
                         //await scrapeAdesaoPse(page, moduleName, link);
                     } else if (link.includes('listagem-saude-com-agente')) {
-                        await scrapeListagemSaudeComAgente(page, moduleName, link);
+                        //await scrapeListagemSaudeComAgente(page, moduleName, link);
                     } else if (link.includes('sisab.saude.gov.br')) {
-                        await scrapeSisab(page, moduleName, link);
+                        //await scrapeSisab(page, moduleName, link);
                     } else if (link.includes('tria')) {
                         await scrapeTria(page, moduleName, link);
                     } else if (link.includes('informatiza-aps')) {

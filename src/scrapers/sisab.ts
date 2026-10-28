@@ -30,13 +30,13 @@ export async function scrapeSisab(page: Page, moduleName: string, targetUrl: str
         const subPage = await page.browser().newPage();
         try {
             if (link.includes('RelValidacao.xhtml')) {
-                //await scrapeSisabValidacao(subPage, downloadPath, link);
+                await scrapeSisabValidacao(subPage, downloadPath, link);
             } else if (link.includes('indicadorPainel.xhtml')) {
-                //await scrapeSisabIndicadorPainel(subPage, downloadPath, link);
+                await scrapeSisabIndicadorPainel(subPage, downloadPath, link);
             } else if (link.includes('indicadorCadastro.xhtml')) {
                 await scrapeSisabIndicadorCadastro(subPage, downloadPath, link);
             } else if (link.includes('RelSauProducao.xhtml')) {
-                //await scrapeSisabProducao(subPage, downloadPath, link);
+                await scrapeSisabProducao(subPage, downloadPath, link);
             } else if (link.includes('IndicadorPrenatal.xhtml')) {
                 await scrapeSisabPrenatal(subPage, downloadPath, link);
             } else if (link.includes('RelSauAtivColetiva.xhtml')) {

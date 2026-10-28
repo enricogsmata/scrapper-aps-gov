@@ -175,6 +175,7 @@ export async function scrapeSisabPrenatal(page: Page, downloadPath: string, targ
         await safeRunCombination(`ind-${ind}`, async () => {
             log.info(`Selecionando Indicador: ${ind}`);
             await page.evaluate((sel, val) => {
+                (window as any).mnpTpProd = (window as any).mnpTpProd || (() => { });
                 const jq = (window as any).$;
                 if (jq && jq(sel).length) {
                     jq(sel).val(val).trigger('change');
@@ -184,9 +185,6 @@ export async function scrapeSisabPrenatal(page: Page, downloadPath: string, targ
                         el.value = val;
                         el.dispatchEvent(new Event('change', { bubbles: true }));
                     }
-                }
-                if (typeof (window as any).mnpTpProd === 'function') {
-                    (window as any).mnpTpProd(val);
                 }
             }, SELECTORS.selectColuna, ind);
 

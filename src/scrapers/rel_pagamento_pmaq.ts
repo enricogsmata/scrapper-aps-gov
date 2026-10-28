@@ -21,12 +21,13 @@ const SELECTORS = [
 
 async function doDownload(page: Page, downloadPath: string, prefix: string): Promise<void> {
     const log = logger.forMethod('doDownload');
-    const btnSelector = 'input[type="submit"][id$=":Download"]';
+    const labelSelector = 'label[for$=":Download"]';
+    const inputSelector = 'input[type="submit"][id$=":Download"]';
 
     const isBtnAvailable = await page.evaluate((sel) => {
         const btn = document.querySelector<HTMLInputElement>(sel);
         return btn && !btn.disabled;
-    }, btnSelector);
+    }, inputSelector);
 
     if (!isBtnAvailable) {
         log.warn(`[${prefix}] Botão de download indisponível.`);
@@ -39,7 +40,7 @@ async function doDownload(page: Page, downloadPath: string, prefix: string): Pro
         const savedPath = await triggerDownloadAndSave(page, {
             downloadPath,
             fileName: prefix,
-            trigger: () => realClick(page, btnSelector),
+            trigger: () => realClick(page, labelSelector),
             startTimeout: 30000,
             finishTimeout: 180000,
             retries: 2,

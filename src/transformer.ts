@@ -3,6 +3,7 @@ import { transformAcoesEProgramasAdesaoPse } from "./transformers/acoes-e-progra
 import { transformAcoesEProgramasHomologacaoSaudeComAgente } from "./transformers/acoes-e-programas/acoesEProgramasHomologacaoSaudeComAgenteTransformer.js";
 import { transformAcoesEProgramasIndicadorCadastro } from "./transformers/acoes-e-programas/acoesEProgramasIndicadorCadastroTransformer.js";
 import { transformAcoesEProgramasIndicadorPainel } from "./transformers/acoes-e-programas/acoesEProgramasIndicadorPainelTransformer.js";
+import { transformAcoesEProgramasSaudeProducao } from "./transformers/acoes-e-programas/acoesEProgramasSaudeProducaoTransformer.js";
 import { transformSisabValidacao } from "./transformers/acoes-e-programas/sisabValidacaoTransformer.js";
 import { transformCoberturaAcs } from "./transformers/cobertura-da-aps/coberturaAcsTransformer.js";
 import { transformCoberturaApsHistorico } from "./transformers/cobertura-da-aps/coberturaApsHistoricoTransformer.js";
@@ -40,3 +41,4 @@ import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transforme
 //await transformSisabValidacao();
 //await transformAcoesEProgramasIndicadorPainel();
 //await transformAcoesEProgramasIndicadorCadastro();
+//await transformAcoesEProgramasSaudeProducao();

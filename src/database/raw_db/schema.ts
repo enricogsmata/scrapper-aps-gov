@@ -559,3 +559,15 @@ export const acoesEProgramasIndicadorCadastro = mysqlTable(
   }
 );
 
+export const acoesEProgramasSaudeProducao = mysqlTable(
+  "acoes_e_programas_saude_producao",
+  {
+    id: serial("id").primaryKey(),
+    brasil: text("brasil"),
+    atendimentoIndividual: text("atendimento_individual"),
+    atendimentoOdontologico: text("atendimento_odontologico"),
+    procedimento: text("procedimento"),
+    visitaDomiciliar: text("visita_domiciliar"),
+  }
+);
+

@@ -700,3 +700,33 @@ export const siapsPublicoPraticasAssistenciaisTab3 = mysqlTable(
   }
 );
 
+export const siapsPublicoPraticasAssistenciaisTab4 = mysqlTable(
+  "siaps_publico_praticas_assistenciais_tab_4",
+  {
+    id: serial("id").primaryKey(),
+    brasil: text("brasil"),
+    semInformacao: text("sem_informacao"),
+    esfEquipeDeSaudeDaFamilia: text("esf_equipe_de_saude_da_familia"),
+    esfsbM1EsfComSaudeBucalMI: text("esfsb_m1_esf_com_saude_bucal_m_i"),
+    esfsbM2EsfComSaudeBucalMII: text("esfsb_m2_esf_com_saude_bucal_m_ii"),
+    eacsEquipeDeAgentesComunitariosDeSaude: text("eacs_equipe_de_agentes_comunitarios_de_saude"),
+    nasf1NucleoDeApoioASaudeDaFamiliaNasfModalidade1: text("nasf1_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_1"),
+    nasf2NucleoDeApoioASaudeDaFamiliaNasfModalidade2: text("nasf2_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_2"),
+    eacssbM1EqAgentesComunitariosComSaudeBucalMi: text("eacssb_m1_eq_agentes_comunitarios_com_saude_bucal_mi"),
+    eacssbM2EqAgentesComunitariosComSaudeBucalMii: text("eacssb_m2_eq_agentes_comunitarios_com_saude_bucal_mii"),
+    esfrsbMiEsfRibeirinhaComSaudeBucalMi: text("esfrsb_mi_esf_ribeirinha_com_saude_bucal_mi"),
+    eab1EquipeDeAtencaoBasicaTipoI: text("eab1_equipe_de_atencao_basica_tipo_i"),
+    eab1sbEquipeDeAtencaoBasicaTipoIComSaudeBucal: text("eab1sb_equipe_de_atencao_basica_tipo_i_com_saude_bucal"),
+    esf1EstrategiaDeSaudeDaFamiliaTipoI: text("esf1_estrategia_de_saude_da_familia_tipo_i"),
+    esf1sbM1EsfTipoIComSaudeBucalModalidadeI: text("esf1sb_m1_esf_tipo_i_com_saude_bucal_modalidade_i"),
+    esf4EstrategiaDeSaudeDaFamiliaTipoIv: text("esf4_estrategia_de_saude_da_familia_tipo_iv"),
+    esf4sbM1EsfTipoIvComSaudeBucalModalidadeI: text("esf4sb_m1_esf_tipo_iv_com_saude_bucal_modalidade_i"),
+    esf4sbM2EsfTipoIvComSaudeBucalModalidadeIi: text("esf4sb_m2_esf_tipo_iv_com_saude_bucal_modalidade_ii"),
+    esftransEsfTransitoria: text("esftrans_esf_transitoria"),
+    esftranssbM1EsfTransitoriaComSaudeBucalMi: text("esftranssb_m1_esf_transitoria_com_saude_bucal_mi"),
+    esftranssbM2EsfTransitoriaComSaudeBucalMii: text("esftranssb_m2_esf_transitoria_com_saude_bucal_mii"),
+    ecrMiiEquipeDosConsultoriosNaRuaModalidadeIi: text("ecr_mii_equipe_dos_consultorios_na_rua_modalidade_ii"),
+    nasf3NucleoDeApoioASaudeDaFamiliaNasfModalidade3: text("nasf3_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_3"),
+    total: text("total"),
+  }
+);

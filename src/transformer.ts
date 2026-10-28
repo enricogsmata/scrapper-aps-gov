@@ -29,6 +29,7 @@ import { transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais } fro
 import { transformSiapsPublicoPraticasAssistenciaisTab1 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab1Transformer.js";
 import { transformSiapsPublicoPraticasAssistenciaisTab2 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab2Transformer.js";
 import { transformSiapsPublicoPraticasAssistenciaisTab3 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab3Transformer.js";
+import { transformSiapsPublicoPraticasAssistenciaisTab4 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab4Transformer.js";
 import { transformSiapsPublico } from "./transformers/siaps/siapsPublicoTransformer.js";
 
 //await transformGerenciaapsAusenciaEnvioProducao();
@@ -62,3 +63,4 @@ import { transformSiapsPublico } from "./transformers/siaps/siapsPublicoTransfor
 //await transformSiapsPublicoPraticasAssistenciaisTab1();
 //await transformSiapsPublicoPraticasAssistenciaisTab2();
 //await transformSiapsPublicoPraticasAssistenciaisTab3();
+await transformSiapsPublicoPraticasAssistenciaisTab4();

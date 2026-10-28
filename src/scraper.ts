@@ -139,13 +139,13 @@ export async function runScrapper(): Promise<void> {
                     } else if (link.includes('sisab.saude.gov.br')) {
                         //await scrapeSisab(page, moduleName, link);
                     } else if (link.includes('tria')) {
-                        await scrapeTria(page, moduleName, link);
+                        //await scrapeTria(page, moduleName, link);
                     } else if (link.includes('informatiza-aps')) {
-                        await scrapeInformatizaAps(page, moduleName, link);
+                        //await scrapeInformatizaAps(page, moduleName, link);
                     } else if (link.includes('relPagamentoPmaq')) {
-                        await scrapeRelPagamentoPmaq(page, moduleName, link);
+                        //await scrapeRelPagamentoPmaq(page, moduleName, link);
                     } else if (link.includes('saude-hora')) {
-                        await scrapeSaudeHora(page, moduleName, link);
+                        //await scrapeSaudeHora(page, moduleName, link);
                     } else if (link.includes('praticas-assistenciais')) {
                         await scrapePraticasAssistenciais(page, moduleName, link);
                     } else if (link.includes('siaps.saude.gov.br')) {

@@ -642,3 +642,17 @@ export const acoesEProgramasDescontinuadosAdesaoSaudeHora = mysqlTable(
   }
 );
 
+export const siapsPublico = mysqlTable("siaps_publico", {
+  id: serial("id").primaryKey(),
+  quadrimestreAno: text("quadrimestre_ano"),
+  uf: text("uf"),
+  codigoIbge: text("codigo_ibge"),
+  municipio: text("municipio"),
+  tipoDeEquipe: text("tipo_de_equipe"),
+  dimensaoPorTipoDeEquipe: text("dimensao_por_tipo_de_equipe"),
+  totalDeEquipeRegular: text("total_de_equipe_regular"),
+  totalDeEquipeSuficiente: text("total_de_equipe_suficiente"),
+  totalDeEquipeBom: text("total_de_equipe_bom"),
+  totalDeEquipeOtimo: text("total_de_equipe_otimo"),
+});
+

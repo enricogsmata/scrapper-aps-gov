@@ -15,7 +15,7 @@ const logger = new_logger(import.meta.url);
 const SELECTORS = {
     tabPanelAtendimentos: 'p-tabpanel:has(#pn_id_3_content)',
     parametroRadioButtons: '.radio-cards button.radio-card',
-    competenciaButton: 'f-competencia-select button.select-competencia',
+    competenciaButton: 'div.p-tabview-panel:not([hidden]) f-competencia-select button.select-competencia',
     agruparPorDropdown: '.campo:has(label:contains("Agrupar por")) p-dropdown, div.campo:nth-child(2) p-dropdown',
     compararComDropdown: '.campo:has(label:contains("Comparar com")) p-dropdown, div.campo:nth-child(3) p-dropdown',
     btnRealizarConsulta: 'botao-realizar-consulta button.br-button.primary',
@@ -44,7 +44,7 @@ async function getAvailableYears(page: Page): Promise<number[]> {
         cancelBtn?.click();
     });
 
-    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 }).catch(() => {});
+    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 }).catch(() => { });
     return Array.from({ length: totalYears }, (_, i) => i);
 }
 
@@ -97,7 +97,7 @@ async function configureCompetenciasPorAno(page: Page, yearIndex: number): Promi
         okBtn?.click();
     });
 
-    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 }).catch(() => {});
+    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 }).catch(() => { });
     return yearLabel;
 }
 
@@ -127,7 +127,7 @@ async function selectPrimeNgOptionByIndex(page: Page, dropdownContainerSelector:
         },
         { timeout: 10000 },
         panelSelector
-    ).catch(() => {});
+    ).catch(() => { });
 
     return selectedText;
 }
@@ -153,7 +153,7 @@ async function getDropdownOptionsCount(page: Page, dropdownContainerSelector: st
         },
         { timeout: 10000 },
         panelSelector
-    ).catch(() => {});
+    ).catch(() => { });
 
     return count;
 }
@@ -162,7 +162,7 @@ async function doDownloadCsv(page: Page, downloadPath: string, filePrefix: strin
     const log = logger.forMethod('doDownloadCsv');
     log.info(`[${filePrefix}] Disparando download do relatório...`);
 
-    const downloadButtonSelector = 'download-button button';
+    const downloadButtonSelector = 'div.p-tabview-panel:not([hidden]) download-button button';
     const overlayOptionSelector = 'div.button-row';
 
     try {
@@ -176,11 +176,13 @@ async function doDownloadCsv(page: Page, downloadPath: string, filePrefix: strin
 
                 await page.evaluate((sel) => {
                     const rows = Array.from(document.querySelectorAll<HTMLDivElement>(sel));
-                    const csvBtn = rows.find((r) => r.textContent?.toLowerCase().includes('.csv'));
+                    const visibleRows = rows.filter((r) => r.offsetParent !== null);
+                    const targetRows = visibleRows.length > 0 ? visibleRows : rows;
+                    const csvBtn = targetRows.find((r) => r.textContent?.toLowerCase().includes('.csv'));
                     if (csvBtn) {
                         csvBtn.click();
                     } else {
-                        rows[0]?.click();
+                        targetRows[0]?.click();
                     }
                 }, overlayOptionSelector);
             },
@@ -212,10 +214,12 @@ export async function scrapePraticasAssistenciais(page: Page, moduleName: string
     const totalTabs = await page.$$eval('p-tabview ul.p-tabview-nav li[role="presentation"] a', (els) => els.length);
 
     for (let t = 0; t < totalTabs; t++) {
+        const tabLinks = await page.$$('p-tabview ul.p-tabview-nav li[role="presentation"] a');
+        await realClick(page, tabLinks[t]);
+
         const tabInfo = await page.evaluate((tabIdx) => {
             const tabs = document.querySelectorAll<HTMLAnchorElement>('p-tabview ul.p-tabview-nav li[role="presentation"] a');
             const target = tabs[tabIdx];
-            target?.click();
             const text = target?.textContent?.trim() || `tab-${tabIdx}`;
             const slug = text
                 .normalize('NFD')
@@ -230,11 +234,11 @@ export async function scrapePraticasAssistenciais(page: Page, moduleName: string
         await setupDownloadBehavior(page, tabDownloadPath);
 
         log.info(`Iniciando extração da aba [${tabInfo.text}]`);
-        await page.waitForSelector('p-tabpanel:not([hidden]) div.campos-grid', { visible: true });
+        await page.waitForSelector('div.p-tabview-panel:not([hidden]) div.campos-grid', { visible: true });
 
-        const linhaDropdownSelector = 'p-tabpanel:not([hidden]) div.campos-grid > div:nth-child(2) p-dropdown';
-        const colunaDropdownSelector = 'p-tabpanel:not([hidden]) div.campos-grid > div:nth-child(3) p-dropdown';
-        const radioCardsSelector = 'p-tabpanel:not([hidden]) .radio-cards button.radio-card';
+        const linhaDropdownSelector = 'div.p-tabview-panel:not([hidden]) div.campos-grid > div:nth-child(2) p-dropdown';
+        const colunaDropdownSelector = 'div.p-tabview-panel:not([hidden]) div.campos-grid > div:nth-child(3) p-dropdown';
+        const radioCardsSelector = 'div.p-tabview-panel:not([hidden]) .radio-cards button.radio-card';
 
         const totalParametros = await page.$$eval(radioCardsSelector, (els) => els.length);
         const totalLinhaOptions = await getDropdownOptionsCount(page, linhaDropdownSelector);
@@ -271,11 +275,11 @@ export async function scrapePraticasAssistenciais(page: Page, moduleName: string
                                         const colunaLabel = await selectPrimeNgOptionByIndex(page, colunaDropdownSelector, c);
                                         log.info(`[${tabInfo.slug}] Consulta: [${paramLabel}] | Ano [${yearLabel}] | Linha [${linhaLabel}] | Coluna [${colunaLabel}]`);
 
-                                        const btnRealizarConsultaSel = 'p-tabpanel:not([hidden]) botao-realizar-consulta button.br-button.primary';
+                                        const btnRealizarConsultaSel = 'div.p-tabview-panel:not([hidden]) botao-realizar-consulta button.br-button.primary';
                                         await page.waitForSelector(btnRealizarConsultaSel, { visible: true });
                                         await realClick(page, btnRealizarConsultaSel);
 
-                                        const btnDownloadSel = 'p-tabpanel:not([hidden]) download-button button.br-button';
+                                        const btnDownloadSel = 'div.p-tabview-panel:not([hidden]) download-button button.br-button';
                                         await page.waitForFunction(
                                             (btnSel) => {
                                                 const btn = document.querySelector<HTMLButtonElement>(btnSel);

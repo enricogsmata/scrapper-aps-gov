@@ -26,6 +26,7 @@ import { transformGerenciaapsPagamento } from "./transformers/credenciamento-e-f
 import { transformGerenciaapsSolicitacoesAdesao } from "./transformers/credenciamento-e-financiamento/gerenciaapsSolicitacoesAdesaoTransformer.js";
 import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transformers/credenciamento-e-financiamento/gestaofederalPublicoRelatorioSolicitacoesTransformer.js";
 import { transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisAtendimentosIndividuaisTransformer.js";
+import { transformSiapsPublicoPraticasAssistenciaisTab1 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab1Transformer.js";
 import { transformSiapsPublico } from "./transformers/siaps/siapsPublicoTransformer.js";
 
 //await transformGerenciaapsAusenciaEnvioProducao();
@@ -55,4 +56,5 @@ import { transformSiapsPublico } from "./transformers/siaps/siapsPublicoTransfor
 //await transformAcoesEProgramasRelpagamentopmaq();
 //await transformAcoesEProgramasDescontinuadosAdesaoSaudeHora();
 //await transformSiapsPublico();
-await transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais();
+//await transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais();
+await transformSiapsPublicoPraticasAssistenciaisTab1();

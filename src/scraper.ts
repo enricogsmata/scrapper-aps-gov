@@ -111,45 +111,45 @@ export async function runScrapper(): Promise<void> {
                 try {
                     log.info(`[${moduleName}] Processando link: ${link}`);
                     if (link.includes('ausencia-envio-producao')) {
-                        //await scrapeAusenciaEnvioProducao(page, moduleName, link);
+                        await scrapeAusenciaEnvioProducao(page, moduleName, link);
                     } else if (link.includes('pagamento')) {
-                        //await scrapePagamento(page, moduleName, link);
+                        await scrapePagamento(page, moduleName, link);
                     } else if (link.includes('ines-cnes-homologados')) {
-                        //await scrapeInesCnesHomologados(page, moduleName, link);
+                        await scrapeInesCnesHomologados(page, moduleName, link);
                     } else if (link.includes('relatorio-solicitacoes')) {
-                        //await scrapeRelatorioSolicitacoes(page, moduleName, link);
+                        await scrapeRelatorioSolicitacoes(page, moduleName, link);
                     } else if (link.includes('solicitacoes-adesao')) {
-                        //await scrapeSolicitacoesAdesao(page, moduleName, link);
+                        await scrapeSolicitacoesAdesao(page, moduleName, link);
                     } else if (link.includes('outros-incentivos')) {
-                        //await scrapeOutrosIncentivos(page, moduleName, link);
+                        await scrapeOutrosIncentivos(page, moduleName, link);
                     } else if (link.includes('cobertura/aps')) {
-                        //await scrapeCoberturaAps(page, moduleName, link);
+                        await scrapeCoberturaAps(page, moduleName, link);
                     } else if (link.includes('cobertura/saude-bucal')) {
-                        //await scrapeCoberturaSaudeBucal(page, moduleName, link);
+                        await scrapeCoberturaSaudeBucal(page, moduleName, link);
                     } else if (link.includes('cobertura/acs')) {
-                        //await scrapeCoberturaAcs(page, moduleName, link);
+                        await scrapeCoberturaAcs(page, moduleName, link);
                     } else if (link.includes('mapas.sus.c3sl.ufpr.br')) {
-                        //await scrapeMapasSus(page, moduleName, link);
+                        await scrapeMapasSus(page, moduleName, link);
                     } else if (link.includes('relHistoricoPagamentoIndex')) {
-                        //await scrapeHistoricoPagamentoIndex(page, moduleName, link);
+                        await scrapeHistoricoPagamentoIndex(page, moduleName, link);
                     } else if (link.includes('adesao/pse')) {
-                        //await scrapeAdesaoPse(page, moduleName, link);
+                        await scrapeAdesaoPse(page, moduleName, link);
                     } else if (link.includes('listagem-saude-com-agente')) {
-                        //await scrapeListagemSaudeComAgente(page, moduleName, link);
+                        await scrapeListagemSaudeComAgente(page, moduleName, link);
                     } else if (link.includes('sisab.saude.gov.br')) {
-                        //await scrapeSisab(page, moduleName, link);
+                        await scrapeSisab(page, moduleName, link);
                     } else if (link.includes('tria')) {
-                        //await scrapeTria(page, moduleName, link);
+                        await scrapeTria(page, moduleName, link);
                     } else if (link.includes('informatiza-aps')) {
-                        //await scrapeInformatizaAps(page, moduleName, link);
+                        await scrapeInformatizaAps(page, moduleName, link);
                     } else if (link.includes('relPagamentoPmaq')) {
-                        //await scrapeRelPagamentoPmaq(page, moduleName, link);
+                        await scrapeRelPagamentoPmaq(page, moduleName, link);
                     } else if (link.includes('saude-hora')) {
-                        //await scrapeSaudeHora(page, moduleName, link);
+                        await scrapeSaudeHora(page, moduleName, link);
                     } else if (link.includes('praticas-assistenciais')) {
                         await scrapePraticasAssistenciais(page, moduleName, link);
                     } else if (link.includes('siaps.saude.gov.br')) {
-                        //await scrapeSiapsPublico(page, moduleName, link);
+                        await scrapeSiapsPublico(page, moduleName, link);
                     } else {
                         log.info(`Link não mapeado para scraper específico: ${link}`);
                     }

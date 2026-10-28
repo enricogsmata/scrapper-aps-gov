@@ -20,7 +20,7 @@ export async function transformSiapsPublicoPraticasAssistenciaisAtendimentosIndi
     "downloads",
     "siaps",
     "publico-praticas-assistenciais",
-    "atendimentos_individuais"
+    "tab-0"
   );
 
   logger.info(

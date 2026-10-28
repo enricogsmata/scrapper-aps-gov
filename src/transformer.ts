@@ -28,6 +28,7 @@ import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transforme
 import { transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisAtendimentosIndividuaisTransformer.js";
 import { transformSiapsPublicoPraticasAssistenciaisTab1 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab1Transformer.js";
 import { transformSiapsPublicoPraticasAssistenciaisTab2 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab2Transformer.js";
+import { transformSiapsPublicoPraticasAssistenciaisTab3 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab3Transformer.js";
 import { transformSiapsPublico } from "./transformers/siaps/siapsPublicoTransformer.js";
 
 //await transformGerenciaapsAusenciaEnvioProducao();
@@ -59,4 +60,5 @@ import { transformSiapsPublico } from "./transformers/siaps/siapsPublicoTransfor
 //await transformSiapsPublico();
 //await transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais();
 //await transformSiapsPublicoPraticasAssistenciaisTab1();
-await transformSiapsPublicoPraticasAssistenciaisTab2();
+//await transformSiapsPublicoPraticasAssistenciaisTab2();
+//await transformSiapsPublicoPraticasAssistenciaisTab3();

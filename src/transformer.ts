@@ -25,4 +25,4 @@ import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transforme
 //await transformCoberturaSaudeBucalV2();
 //await transformCoberturaSaudeBucalV2Historico();
 //await transformCoberturaAcs();
-await transformMapasSus();
+//await transformMapasSus();

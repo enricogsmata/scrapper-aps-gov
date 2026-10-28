@@ -2,6 +2,7 @@
   "type": "module",
   "dependencies": {
     "adm-zip": "^0.6.1",
+    "better-sqlite3": "^13.0.3",
     "dotenv": "^18.0.9",
     "drizzle-orm": "^0.45.4",
     "env": "^0.0.2",
@@ -15,6 +16,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.5",
     "drizzle-kit": "^0.31.11"
   },

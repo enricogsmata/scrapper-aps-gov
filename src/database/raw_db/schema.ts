@@ -516,3 +516,17 @@ export const acoesEProgramasAdesaoPse = mysqlTable(
   }
 );
 
+export const acoesEProgramasHomologacaoSaudeComAgente = mysqlTable(
+  "acoes_e_programas_homologacao_saude_com_agente",
+  {
+    id: serial("id").primaryKey(),
+    ibge: text("ibge"),
+    municipio: text("municipio"),
+    uf: text("uf"),
+    nomeDoAgente: text("nome_do_agente"),
+    curso: text("curso"),
+    vinculo: text("vinculo"),
+    dataDeFinalizacao: text("data_de_finalizacao"),
+  }
+);
+

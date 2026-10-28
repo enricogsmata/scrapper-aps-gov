@@ -1,9 +1,14 @@
 // src/scrapers/outros_incentivos.ts
 import { Page } from "puppeteer";
 import * as path from "path";
-import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    safeDownloadFromUrl,
+    formatError,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -52,24 +57,38 @@ export async function scrapeOutrosIncentivos(page: Page, moduleName: string, tar
             continue;
         }
 
-        const filesBefore = getFilesInDir(downloadPath);
-        log.info(`[${cleanName}] Iniciando download do incentivo...`);
+        await safeRunCombination(cleanName, async () => {
+            log.info(`[${cleanName}] Iniciando download do incentivo...`);
 
-        try {
-            await page.evaluate((url) => {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = '';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }, item.url);
-
-            await waitForNewDownloadAndRename(downloadPath, filesBefore, cleanName, 120000);
+            if (item.url.startsWith('http')) {
+                // Download direto via fetch seguro
+                const ext = path.extname(new URL(item.url).pathname) || '.xlsx';
+                const dest = path.join(downloadPath, `${cleanName}${ext}`);
+                await safeDownloadFromUrl(item.url, dest, { retries: 2, retryDelayMs: 3000, skipIfExists: true });
+            } else {
+                // Disparo no navegador
+                await triggerDownloadAndSave(page, {
+                    downloadPath,
+                    fileName: cleanName,
+                    trigger: async () => {
+                        await page.evaluate((url) => {
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = '';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }, item.url);
+                    },
+                    startTimeout: 30000,
+                    finishTimeout: 120000,
+                    retries: 2,
+                    retryDelayMs: 3000,
+                    skipIfExists: true
+                });
+            }
             log.info(`[${cleanName}] Arquivo baixado com sucesso.`);
-        } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${cleanName}] Falha no download do arquivo:`);
-        }
+        });
     }
 
     log.info('Extração finalizada para: Outros Incentivos.');

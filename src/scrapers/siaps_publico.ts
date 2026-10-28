@@ -3,11 +3,16 @@ import { Page } from "puppeteer";
 import * as path from "path";
 import { new_logger } from "../services/logs.js";
 import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption } from "../primeng_helpers.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
-// src/scrapers/siaps_publico.ts
 const SELECTORS = {
     componenteDropdown: '.component-select p-dropdown',
     competenciaButton: 'button.select-competencia',
@@ -20,7 +25,7 @@ const SELECTORS = {
 
 async function getAvailableYears(page: Page): Promise<number[]> {
     await page.waitForSelector(SELECTORS.competenciaButton, { visible: true });
-    await page.click(SELECTORS.competenciaButton);
+    await realClick(page, SELECTORS.competenciaButton);
 
     const overlaySelector = 'div.p-overlaypanel[role="dialog"]';
     await page.waitForSelector(overlaySelector, { visible: true, timeout: 10000 });
@@ -37,13 +42,13 @@ async function getAvailableYears(page: Page): Promise<number[]> {
         cancelBtn?.click();
     });
 
-    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 });
+    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 }).catch(() => {});
     return yearIndices;
 }
 
 async function configureCompetenciasPorAno(page: Page, yearIndex: number): Promise<string> {
     await page.waitForSelector(SELECTORS.competenciaButton, { visible: true });
-    await page.click(SELECTORS.competenciaButton);
+    await realClick(page, SELECTORS.competenciaButton);
 
     const overlaySelector = 'div.p-overlaypanel[role="dialog"]';
     await page.waitForSelector(overlaySelector, { visible: true, timeout: 10000 });
@@ -90,7 +95,7 @@ async function configureCompetenciasPorAno(page: Page, yearIndex: number): Promi
         okBtn?.click();
     });
 
-    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 });
+    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 }).catch(() => {});
     return selectedLabel;
 }
 
@@ -127,47 +132,43 @@ async function selectAllUfs(page: Page): Promise<void> {
     }
 
     await page.keyboard.press('Escape');
-    await page.waitForSelector('.p-multiselect-panel', { hidden: true });
+    await page.waitForSelector('.p-multiselect-panel', { hidden: true }).catch(() => {});
 }
 
 async function doDownloadCsv(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
     const log = logger.forMethod('doDownloadCsv');
-    const filesBefore = getFilesInDir(downloadPath);
-
-    log.info(`[${filePrefix}] Disparando geração e download do relatório...`);
+    log.info(`[${filePrefix}] Disparando download do relatório CSV...`);
 
     const downloadButtonSelector = 'download-button button';
-    await page.waitForSelector(downloadButtonSelector, { visible: true });
-
-    await page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
-    });
-    await new Promise((r) => setTimeout(r, 1000));
-
-    await page.evaluate((sel) => {
-        const btn = document.querySelector<HTMLButtonElement>(sel);
-        btn?.scrollIntoView({ behavior: 'instant', block: 'center' });
-        btn?.click();
-    }, downloadButtonSelector);
-
     const overlayOptionSelector = 'div.button-row';
-    await page.waitForSelector(overlayOptionSelector, { visible: true, timeout: 15000 });
-
-    await page.evaluate((sel) => {
-        const rows = Array.from(document.querySelectorAll<HTMLDivElement>(sel));
-        const csvBtn = rows.find((r) => r.textContent?.toLowerCase().includes('.csv'));
-        if (csvBtn) {
-            csvBtn.click();
-        } else {
-            rows[0]?.click();
-        }
-    }, overlayOptionSelector);
 
     try {
-        await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix, 120000);
-        log.info(`[${filePrefix}] Download do relatório CSV concluído com sucesso.`);
+        const savedPath = await triggerDownloadAndSave(page, {
+            downloadPath,
+            fileName: filePrefix,
+            trigger: async () => {
+                await page.waitForSelector(downloadButtonSelector, { visible: true });
+                await realClick(page, downloadButtonSelector);
+                await page.waitForSelector(overlayOptionSelector, { visible: true, timeout: 15000 });
+
+                await page.evaluate((sel) => {
+                    const rows = Array.from(document.querySelectorAll<HTMLDivElement>(sel));
+                    const csvBtn = rows.find((r) => r.textContent?.toLowerCase().includes('.csv'));
+                    if (csvBtn) {
+                        csvBtn.click();
+                    } else {
+                        rows[0]?.click();
+                    }
+                }, overlayOptionSelector);
+            },
+            startTimeout: 30000,
+            finishTimeout: 180000,
+            retries: 2,
+            retryDelayMs: 3000,
+        });
+        log.info(`[${filePrefix}] Download do relatório CSV concluído com sucesso: ${savedPath}`);
     } catch (error) {
-        log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha no download CSV:`);
+        log.error({ data: formatError(error) }, `[${filePrefix}] Falha no download CSV:`);
     }
 }
 
@@ -188,21 +189,25 @@ export async function scrapeSiapsPublico(page: Page, moduleName: string, targetU
     const yearIndices = await getAvailableYears(page);
 
     for (let c = 0; c < numComponentes; c++) {
-        await selectPrimeNgDropdownOption(page, SELECTORS.componenteDropdown, c);
-        await new Promise((r) => setTimeout(r, 1000));
-
-        await selectAllUfs(page);
-        await new Promise((r) => setTimeout(r, 1000));
-
-        for (const yearIdx of yearIndices) {
-            const yearLabel = await configureCompetenciasPorAno(page, yearIdx);
+        await safeRunCombination(`comp-${c}`, async () => {
+            await selectPrimeNgDropdownOption(page, SELECTORS.componenteDropdown, c);
             await new Promise((r) => setTimeout(r, 1000));
 
-            await page.click(SELECTORS.btnAplicarFiltros);
-            await new Promise((r) => setTimeout(r, 3000));
+            await selectAllUfs(page);
+            await new Promise((r) => setTimeout(r, 1000));
 
-            await doDownloadCsv(page, downloadPath, `comp-${c}_ano-${yearLabel}`);
-        }
+            for (const yearIdx of yearIndices) {
+                await safeRunCombination(`comp-${c}_anoIdx-${yearIdx}`, async () => {
+                    const yearLabel = await configureCompetenciasPorAno(page, yearIdx);
+                    await new Promise((r) => setTimeout(r, 1000));
+
+                    await realClick(page, SELECTORS.btnAplicarFiltros);
+                    await new Promise((r) => setTimeout(r, 3000));
+
+                    await doDownloadCsv(page, downloadPath, `comp-${c}_ano-${yearLabel}`);
+                });
+            }
+        });
     }
 
     log.info('Extração finalizada para: Relatórios Públicos SIAPS.');

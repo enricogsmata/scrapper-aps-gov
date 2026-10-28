@@ -31,4 +31,4 @@ import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transforme
 //await transformMapasSus();
 //await transformRelHistoricoPagamentoEsf();
 //await transformRelHistoricoPagamentoOutros();
-await transformAcoesEProgramasAdesaoPse();
+//await transformAcoesEProgramasAdesaoPse();

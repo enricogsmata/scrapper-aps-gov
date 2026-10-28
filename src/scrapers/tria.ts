@@ -3,7 +3,13 @@ import { Page } from "puppeteer";
 import * as path from "path";
 import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    safeDownloadFromUrl,
+    formatError,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -43,25 +49,36 @@ export async function scrapeTria(page: Page, moduleName: string, targetUrl: stri
     for (const [index, item] of zipLinks.entries()) {
         const rawName = item.text || `arquivo_${index + 1}`;
         const cleanName = sanitizeFileName(rawName.split('(')[0]?.trim() || rawName);
-        const filesBefore = getFilesInDir(baseDownloadPath);
 
-        log.info(`[${cleanName}] Baixando arquivo TRIA...`);
+        await safeRunCombination(cleanName, async () => {
+            log.info(`[${cleanName}] Baixando arquivo TRIA...`);
 
-        try {
-            await page.evaluate((url) => {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = '';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }, item.url);
-
-            await waitForNewDownloadAndRename(baseDownloadPath, filesBefore, cleanName, 120000);
+            if (item.url.startsWith('http')) {
+                const dest = path.join(baseDownloadPath, `${cleanName}.zip`);
+                await safeDownloadFromUrl(item.url, dest, { retries: 2, retryDelayMs: 3000, skipIfExists: true });
+            } else {
+                await triggerDownloadAndSave(page, {
+                    downloadPath: baseDownloadPath,
+                    fileName: cleanName,
+                    trigger: async () => {
+                        await page.evaluate((url) => {
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = '';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }, item.url);
+                    },
+                    startTimeout: 30000,
+                    finishTimeout: 180000,
+                    retries: 2,
+                    retryDelayMs: 3000,
+                    skipIfExists: true
+                });
+            }
             log.info(`[${cleanName}] Arquivo baixado com sucesso.`);
-        } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${cleanName}] Falha no download do arquivo:`);
-        }
+        });
     }
 
     if (!fs.existsSync(documentosDownloadPath)) {
@@ -91,20 +108,15 @@ export async function scrapeTria(page: Page, moduleName: string, targetUrl: stri
         const fileName = path.basename(new URL(item.url).pathname) || `${sanitizeFileName(item.text)}.pdf`;
         const filePath = path.join(documentosDownloadPath, fileName);
 
-        log.info(`Baixando material de apoio: ${fileName}`);
-
-        try {
-            const response = await fetch(item.url);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} - ${response.statusText}`);
-            }
-
-            const arrayBuffer = await response.arrayBuffer();
-            fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+        await safeRunCombination(fileName, async () => {
+            log.info(`Baixando material de apoio: ${fileName}`);
+            await safeDownloadFromUrl(item.url, filePath, {
+                retries: 2,
+                retryDelayMs: 3000,
+                skipIfExists: true
+            });
             log.info(`Material de apoio salvo com sucesso: ${fileName}`);
-        } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `Falha ao baixar material de apoio (${item.url}):`);
-        }
+        });
     }
 
     log.info('Extração finalizada para: Triagem para Risco de Insegurança Alimentar (TRIA).');

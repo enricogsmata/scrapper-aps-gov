@@ -1,10 +1,16 @@
 // src/scrapers/ines_cnes_homologados.ts
 import { Page } from "puppeteer";
 import * as path from "path";
-import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
 import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption } from "../primeng_helpers.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeDownloadJsonFromResponse,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -36,32 +42,36 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
 
         log.info(`[${filePrefix}] Botão de download bloqueado. Tentando via requisição (Ver em tela)...`);
 
-        const responsePromise = page.waitForResponse(
-            response => response.url().includes('/gerenciaaps/ines-cnes-homologados') && response.request().method() === 'GET',
-            { timeout: 60000 }
-        );
-
-        await page.click(SELECTORS.btnVerTela);
-
         try {
-            const response = await responsePromise;
-            const json = await response.json();
-
-            const filePath = path.join(downloadPath, `${filePrefix}.json`);
-            fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
-            log.info(`[${filePrefix}] Dados salvos em JSON com sucesso.`);
+            await safeDownloadJsonFromResponse(
+                page,
+                downloadPath,
+                filePrefix,
+                async () => {
+                    await realClick(page, SELECTORS.btnVerTela);
+                },
+                '/gerenciaaps/ines-cnes-homologados',
+                { retries: 2, retryDelayMs: 3000 }
+            );
         } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
+            log.error({ data: formatError(error) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
         }
     } else {
         log.info(`[${filePrefix}] Botão de download habilitado. Realizando download do arquivo...`);
-        const filesBefore = getFilesInDir(downloadPath);
-        await page.click(SELECTORS.btnDownload);
+
         try {
-            await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix);
-            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso.`);
+            const savedPath = await triggerDownloadAndSave(page, {
+                downloadPath,
+                fileName: filePrefix,
+                trigger: () => realClick(page, SELECTORS.btnDownload),
+                startTimeout: 30000,
+                finishTimeout: 180000,
+                retries: 2,
+                retryDelayMs: 3000,
+            });
+            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso: ${path.basename(savedPath)}`);
         } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha no download do arquivo:`);
+            log.error({ data: formatError(error) }, `[${filePrefix}] Falha no download do arquivo:`);
         }
     }
 }
@@ -81,16 +91,19 @@ export async function scrapeInesCnesHomologados(page: Page, moduleName: string, 
     const numUfs = await getPrimeNgDropdownOptionsCount(page, SELECTORS.uf);
 
     for (let u = 0; u < numUfs; u++) {
-        await selectPrimeNgDropdownOption(page, SELECTORS.uf, u);
-        await new Promise(r => setTimeout(r, 1000));
+        await safeRunCombination(`uf-${u}`, async () => {
+            await selectPrimeNgDropdownOption(page, SELECTORS.uf, u);
+            await new Promise(r => setTimeout(r, 1000));
 
-        const numMunicipios = await getPrimeNgDropdownOptionsCount(page, SELECTORS.municipio);
-        for (let m = 0; m < numMunicipios; m++) {
-            await selectPrimeNgDropdownOption(page, SELECTORS.municipio, m);
-            await new Promise(r => setTimeout(r, 500));
-
-            await doDownload(page, downloadPath, `uf-${u}_mun-${m}`);
-        }
+            const numMunicipios = await getPrimeNgDropdownOptionsCount(page, SELECTORS.municipio);
+            for (let m = 0; m < numMunicipios; m++) {
+                await safeRunCombination(`uf-${u}_mun-${m}`, async () => {
+                    await selectPrimeNgDropdownOption(page, SELECTORS.municipio, m);
+                    await new Promise(r => setTimeout(r, 500));
+                    await doDownload(page, downloadPath, `uf-${u}_mun-${m}`);
+                });
+            }
+        });
     }
 
     log.info('Extração finalizada para: Equipes e estabelecimentos homologados.');

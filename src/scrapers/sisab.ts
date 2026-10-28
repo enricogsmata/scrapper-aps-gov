@@ -2,6 +2,7 @@
 import { Page } from "puppeteer";
 import * as path from "path";
 import { new_logger } from "../services/logs.js";
+import { formatError } from "../downloader.js";
 import { scrapeSisabValidacao } from "./sisab_validacao.js";
 import { scrapeSisabIndicadorPainel } from "./sisab_indicador_painel.js";
 import { scrapeSisabIndicadorCadastro } from "./sisab_indicador_cadastro.js";
@@ -14,7 +15,6 @@ const logger = new_logger(import.meta.url);
 
 export async function scrapeSisab(page: Page, moduleName: string, targetUrl: string): Promise<void> {
     const log = logger.forMethod('scrapeSisab');
-
     const downloadPath = path.resolve(process.cwd(), 'downloads', moduleName);
 
     log.info(`Navegando para o portal SISAB: ${targetUrl}`);
@@ -24,60 +24,34 @@ export async function scrapeSisab(page: Page, moduleName: string, targetUrl: str
         return els.map(a => (a as HTMLAnchorElement).href);
     });
 
+    log.info(`Encontrados ${reportLinks.length} relatórios disponíveis no SISAB.`);
+
     for (const link of reportLinks) {
-        if (link.includes('RelValidacao.xhtml')) {
-            const subPage = await page.browser().newPage();
-            try {
-                await scrapeSisabValidacao(subPage, downloadPath, link);
-            } finally {
-                await subPage.close();
-            }
-        } else if (link.includes('indicadorPainel.xhtml')) {
-            const subPage = await page.browser().newPage();
-            try {
-                await scrapeSisabIndicadorPainel(subPage, downloadPath, link);
-            } finally {
-                await subPage.close();
-            }
-        } else if (link.includes('indicadorCadastro.xhtml')) {
-            const subPage = await page.browser().newPage();
-            try {
+        const subPage = await page.browser().newPage();
+        try {
+            if (link.includes('RelValidacao.xhtml')) {
+                //await scrapeSisabValidacao(subPage, downloadPath, link);
+            } else if (link.includes('indicadorPainel.xhtml')) {
+                //await scrapeSisabIndicadorPainel(subPage, downloadPath, link);
+            } else if (link.includes('indicadorCadastro.xhtml')) {
                 await scrapeSisabIndicadorCadastro(subPage, downloadPath, link);
-            } finally {
-                await subPage.close();
-            }
-        } else if (link.includes('RelSauProducao.xhtml')) {
-            const subPage = await page.browser().newPage();
-            try {
-                await scrapeSisabProducao(subPage, downloadPath, link);
-            } finally {
-                await subPage.close();
-            }
-        } else if (link.includes('IndicadorPrenatal.xhtml')) {
-            const subPage = await page.browser().newPage();
-            try {
+            } else if (link.includes('RelSauProducao.xhtml')) {
+                //await scrapeSisabProducao(subPage, downloadPath, link);
+            } else if (link.includes('IndicadorPrenatal.xhtml')) {
                 await scrapeSisabPrenatal(subPage, downloadPath, link);
-            } finally {
-                await subPage.close();
-            }
-        } else if (link.includes('RelSauAtivColetiva.xhtml')) {
-            const subPage = await page.browser().newPage();
-            try {
+            } else if (link.includes('RelSauAtivColetiva.xhtml')) {
                 await scrapeSisabAtivColetiva(subPage, downloadPath, link);
-            } finally {
-                await subPage.close();
-            }
-        } else if (link.includes('IndexDocumentos.xhtml')) {
-            const subPage = await page.browser().newPage();
-            try {
+            } else if (link.includes('IndexDocumentos.xhtml')) {
                 await scrapeSisabDocumentos(subPage, downloadPath, link);
-            } finally {
-                await subPage.close();
+            } else {
+                log.info(`Página pendente de mapeamento no SISAB: ${link}`);
             }
-        } else {
-            log.info(`Página pendente de mapeamento no SISAB: ${link}`);
+        } catch (error) {
+            log.error({ data: formatError(error) }, `Erro ao processar relatório do SISAB (${link}). Prosseguindo para os próximos relatórios...`);
+        } finally {
+            await subPage.close().catch(() => {});
         }
     }
 
-    log.info('Processamento inicial concluído para: SISAB.');
+    log.info('Processamento concluído para: SISAB.');
 }

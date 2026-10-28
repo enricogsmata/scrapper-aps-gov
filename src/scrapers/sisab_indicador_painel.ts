@@ -2,7 +2,13 @@
 import { Page } from "puppeteer";
 import * as path from "path";
 import { new_logger } from "../services/logs.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -29,20 +35,26 @@ async function dismissModalIfPresent(page: Page): Promise<void> {
 
 async function doDownloadCsv(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
     const log = logger.forMethod('doDownloadCsv');
-    const filesBefore = getFilesInDir(downloadPath);
-
     log.info(`[${filePrefix}] Disparando download CSV...`);
-    await page.waitForSelector(SELECTORS.downloadDropdownBtn, { visible: true });
-    await page.click(SELECTORS.downloadDropdownBtn);
-
-    await page.waitForSelector(SELECTORS.csvOptionLink, { visible: true });
-    await page.click(SELECTORS.csvOptionLink);
 
     try {
-        await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix, 120000);
-        log.info(`[${filePrefix}] Download CSV concluído com sucesso.`);
+        const savedPath = await triggerDownloadAndSave(page, {
+            downloadPath,
+            fileName: filePrefix,
+            trigger: async () => {
+                await page.waitForSelector(SELECTORS.downloadDropdownBtn, { visible: true, timeout: 15000 });
+                await realClick(page, SELECTORS.downloadDropdownBtn);
+                await page.waitForSelector(SELECTORS.csvOptionLink, { visible: true, timeout: 15000 });
+                await realClick(page, SELECTORS.csvOptionLink);
+            },
+            startTimeout: 30000,
+            finishTimeout: 180000,
+            retries: 2,
+            retryDelayMs: 3000,
+        });
+        log.info(`[${filePrefix}] Download CSV concluído com sucesso: ${savedPath}`);
     } catch (error) {
-        log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha no download CSV:`);
+        log.error({ data: formatError(error) }, `[${filePrefix}] Falha no download CSV:`);
     }
 }
 
@@ -60,20 +72,7 @@ async function processQuadrimestresEEquipes(page: Page, downloadPath: string, pr
     }, SELECTORS.visaoEquipe);
 
     for (const quad of quadrimestres) {
-        await page.evaluate((sel, val) => {
-            const jq = (window as any).$;
-            if (jq && jq(sel).length) {
-                jq(sel).val(val).trigger('change');
-            } else {
-                const el = document.querySelector<HTMLSelectElement>(sel);
-                if (el) {
-                    el.value = val;
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            }
-        }, SELECTORS.quadrimestre, quad);
-
-        for (const visao of visoes) {
+        await safeRunCombination(`${prefix}_quad-${quad}`, async () => {
             await page.evaluate((sel, val) => {
                 const jq = (window as any).$;
                 if (jq && jq(sel).length) {
@@ -85,12 +84,29 @@ async function processQuadrimestresEEquipes(page: Page, downloadPath: string, pr
                         el.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                 }
-            }, SELECTORS.visaoEquipe, visao);
+            }, SELECTORS.quadrimestre, quad);
 
-            await new Promise(r => setTimeout(r, 500));
-            const visaoSlug = visao === '' ? 'todas' : visao.replace(/\|/g, '_');
-            await doDownloadCsv(page, downloadPath, `${prefix}_quad-${quad}_visao-${visaoSlug}`);
-        }
+            for (const visao of visoes) {
+                const visaoSlug = visao === '' ? 'todas' : visao.replace(/\|/g, '_');
+                await safeRunCombination(`${prefix}_quad-${quad}_visao-${visaoSlug}`, async () => {
+                    await page.evaluate((sel, val) => {
+                        const jq = (window as any).$;
+                        if (jq && jq(sel).length) {
+                            jq(sel).val(val).trigger('change');
+                        } else {
+                            const el = document.querySelector<HTMLSelectElement>(sel);
+                            if (el) {
+                                el.value = val;
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                        }
+                    }, SELECTORS.visaoEquipe, visao);
+
+                    await new Promise(r => setTimeout(r, 600));
+                    await doDownloadCsv(page, downloadPath, `${prefix}_quad-${quad}_visao-${visaoSlug}`);
+                });
+            }
+        });
     }
 }
 
@@ -103,31 +119,33 @@ async function processMunicipios(page: Page, downloadPath: string, prefix: strin
     }, SELECTORS.estadoMunicipio);
 
     for (const uf of estados) {
-        await page.evaluate((sel, val) => {
-            const jq = (window as any).$;
-            if (jq && jq(sel).length) {
-                jq(sel).val(val).trigger('change');
-            } else {
-                const el = document.querySelector<HTMLSelectElement>(sel);
-                if (el) {
-                    el.value = val;
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
+        await safeRunCombination(`${prefix}_uf-${uf}`, async () => {
+            await page.evaluate((sel, val) => {
+                const jq = (window as any).$;
+                if (jq && jq(sel).length) {
+                    jq(sel).val(val).trigger('change');
+                } else {
+                    const el = document.querySelector<HTMLSelectElement>(sel);
+                    if (el) {
+                        el.value = val;
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
                 }
-            }
-        }, SELECTORS.estadoMunicipio, uf);
+            }, SELECTORS.estadoMunicipio, uf);
 
-        await new Promise(r => setTimeout(r, 2000));
+            await new Promise(r => setTimeout(r, 2000));
 
-        await page.evaluate(() => {
-            const selectAllMuns = document.querySelector<HTMLInputElement>(
-                '#regioes .multiselect-all input[type="checkbox"]'
-            );
-            if (selectAllMuns && !selectAllMuns.checked) {
-                selectAllMuns.click();
-            }
+            await page.evaluate(() => {
+                const selectAllMuns = document.querySelector<HTMLInputElement>(
+                    '#regioes .multiselect-all input[type="checkbox"]'
+                );
+                if (selectAllMuns && !selectAllMuns.checked) {
+                    selectAllMuns.click();
+                }
+            });
+
+            await processQuadrimestresEEquipes(page, downloadPath, `${prefix}_uf-${uf}`);
         });
-
-        await processQuadrimestresEEquipes(page, downloadPath, `${prefix}_uf-${uf}`);
     }
 }
 
@@ -135,36 +153,38 @@ async function processNiveisVisualizacao(page: Page, downloadPath: string, prefi
     const niveis = ['nacional', 'regiao', 'uf', 'ibge'];
 
     for (const nivel of niveis) {
-        await page.evaluate((sel, val) => {
-            const jq = (window as any).$;
-            if (jq && jq(sel).length) {
-                jq(sel).val(val).trigger('change');
+        await safeRunCombination(`${prefix}_nivel-${nivel}`, async () => {
+            await page.evaluate((sel, val) => {
+                const jq = (window as any).$;
+                if (jq && jq(sel).length) {
+                    jq(sel).val(val).trigger('change');
+                } else {
+                    const el = document.querySelector<HTMLSelectElement>(sel);
+                    if (el) {
+                        el.value = val;
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }, SELECTORS.selectLinha, nivel);
+
+            await new Promise(r => setTimeout(r, 2000));
+
+            if (nivel === 'regiao' || nivel === 'uf') {
+                await page.evaluate(() => {
+                    const selectAll = document.querySelector<HTMLInputElement>(
+                        '#regioes .multiselect-all input[type="checkbox"]'
+                    );
+                    if (selectAll && !selectAll.checked) {
+                        selectAll.click();
+                    }
+                });
+                await processQuadrimestresEEquipes(page, downloadPath, `${prefix}_nivel-${nivel}`);
+            } else if (nivel === 'ibge') {
+                await processMunicipios(page, downloadPath, `${prefix}_nivel-${nivel}`);
             } else {
-                const el = document.querySelector<HTMLSelectElement>(sel);
-                if (el) {
-                    el.value = val;
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                }
+                await processQuadrimestresEEquipes(page, downloadPath, `${prefix}_nivel-${nivel}`);
             }
-        }, SELECTORS.selectLinha, nivel);
-
-        await new Promise(r => setTimeout(r, 2000));
-
-        if (nivel === 'regiao' || nivel === 'uf') {
-            await page.evaluate(() => {
-                const selectAll = document.querySelector<HTMLInputElement>(
-                    '#regioes .multiselect-all input[type="checkbox"]'
-                );
-                if (selectAll && !selectAll.checked) {
-                    selectAll.click();
-                }
-            });
-            await processQuadrimestresEEquipes(page, downloadPath, `${prefix}_nivel-${nivel}`);
-        } else if (nivel === 'ibge') {
-            await processMunicipios(page, downloadPath, `${prefix}_nivel-${nivel}`);
-        } else {
-            await processQuadrimestresEEquipes(page, downloadPath, `${prefix}_nivel-${nivel}`);
-        }
+        });
     }
 }
 
@@ -185,26 +205,28 @@ export async function scrapeSisabIndicadorPainel(page: Page, downloadPath: strin
 
     for (const ind of indicadores) {
         const indLabel = ind === '' ? 'visao-geral' : ind;
-        log.info(`Processando Indicador: ${indLabel}`);
+        await safeRunCombination(`ind-${indLabel}`, async () => {
+            log.info(`Processando Indicador: ${indLabel}`);
 
-        await page.evaluate((sel, val) => {
-            const jq = (window as any).$;
-            if (jq && jq(sel).length) {
-                jq(sel).val(val).trigger('change');
-            } else {
-                const el = document.querySelector<HTMLSelectElement>(sel);
-                if (el) {
-                    el.value = val;
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
+            await page.evaluate((sel, val) => {
+                const jq = (window as any).$;
+                if (jq && jq(sel).length) {
+                    jq(sel).val(val).trigger('change');
+                } else {
+                    const el = document.querySelector<HTMLSelectElement>(sel);
+                    if (el) {
+                        el.value = val;
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
                 }
-            }
-            if (typeof (window as any).opcoesIndicador === 'function') {
-                (window as any).opcoesIndicador(val, false);
-            }
-        }, SELECTORS.indicador, ind);
+                if (typeof (window as any).opcoesIndicador === 'function') {
+                    (window as any).opcoesIndicador(val, false);
+                }
+            }, SELECTORS.indicador, ind);
 
-        await new Promise(r => setTimeout(r, 1000));
-        await processNiveisVisualizacao(page, specificDownloadPath, `ind-${indLabel}`);
+            await new Promise(r => setTimeout(r, 1000));
+            await processNiveisVisualizacao(page, specificDownloadPath, `ind-${indLabel}`);
+        });
     }
 
     log.info('Extração finalizada para: Indicadores de Desempenho (Painel SISAB).');

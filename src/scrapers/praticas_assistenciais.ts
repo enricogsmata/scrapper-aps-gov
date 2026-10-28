@@ -2,7 +2,13 @@
 import { Page } from "puppeteer";
 import * as path from "path";
 import { new_logger } from "../services/logs.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -17,28 +23,9 @@ const SELECTORS = {
     overlayCsvOption: '.p-overlaypanel div.button-row'
 };
 
-async function selectParametro(page: Page, index: number): Promise<string> {
-    await page.waitForSelector(SELECTORS.parametroRadioButtons, { visible: true });
-    return page.evaluate((sel, idx) => {
-        const buttons = document.querySelectorAll<HTMLButtonElement>(sel);
-        const target = buttons[idx];
-        if (target) {
-            target.click();
-            const label = target.querySelector('.radio-label')?.textContent?.trim() || `param-${idx}`;
-            return label
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-zA-Z0-9_-]/g, '_')
-                .replace(/_+/g, '_')
-                .toLowerCase();
-        }
-        return `param-${idx}`;
-    }, SELECTORS.parametroRadioButtons, index);
-}
-
 async function getAvailableYears(page: Page): Promise<number[]> {
     await page.waitForSelector(SELECTORS.competenciaButton, { visible: true });
-    await page.click(SELECTORS.competenciaButton);
+    await realClick(page, SELECTORS.competenciaButton);
 
     const overlaySelector = 'div.p-overlaypanel[role="dialog"]';
     await page.waitForSelector(overlaySelector, { visible: true, timeout: 10000 });
@@ -57,13 +44,13 @@ async function getAvailableYears(page: Page): Promise<number[]> {
         cancelBtn?.click();
     });
 
-    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 });
+    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 }).catch(() => {});
     return Array.from({ length: totalYears }, (_, i) => i);
 }
 
 async function configureCompetenciasPorAno(page: Page, yearIndex: number): Promise<string> {
     await page.waitForSelector(SELECTORS.competenciaButton, { visible: true });
-    await page.click(SELECTORS.competenciaButton);
+    await realClick(page, SELECTORS.competenciaButton);
 
     const overlaySelector = 'div.p-overlaypanel[role="dialog"]';
     await page.waitForSelector(overlaySelector, { visible: true, timeout: 10000 });
@@ -110,7 +97,7 @@ async function configureCompetenciasPorAno(page: Page, yearIndex: number): Promi
         okBtn?.click();
     });
 
-    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 });
+    await page.waitForSelector(overlaySelector, { hidden: true, timeout: 10000 }).catch(() => {});
     return yearLabel;
 }
 
@@ -173,42 +160,38 @@ async function getDropdownOptionsCount(page: Page, dropdownContainerSelector: st
 
 async function doDownloadCsv(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
     const log = logger.forMethod('doDownloadCsv');
-    const filesBefore = getFilesInDir(downloadPath);
-
-    log.info(`[${filePrefix}] Disparando geração e download do relatório...`);
+    log.info(`[${filePrefix}] Disparando download do relatório...`);
 
     const downloadButtonSelector = 'download-button button';
-    await page.waitForSelector(downloadButtonSelector, { visible: true });
-
-    await page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
-    });
-    await new Promise((r) => setTimeout(r, 1000));
-
-    await page.evaluate((sel) => {
-        const btn = document.querySelector<HTMLButtonElement>(sel);
-        btn?.scrollIntoView({ behavior: 'instant', block: 'center' });
-        btn?.click();
-    }, downloadButtonSelector);
-
     const overlayOptionSelector = 'div.button-row';
-    await page.waitForSelector(overlayOptionSelector, { visible: true, timeout: 15000 });
-
-    await page.evaluate((sel) => {
-        const rows = Array.from(document.querySelectorAll<HTMLDivElement>(sel));
-        const csvBtn = rows.find((r) => r.textContent?.toLowerCase().includes('.csv'));
-        if (csvBtn) {
-            csvBtn.click();
-        } else {
-            rows[0]?.click();
-        }
-    }, overlayOptionSelector);
 
     try {
-        await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix, 180000);
-        log.info(`[${filePrefix}] Download do relatório CSV concluído com sucesso.`);
+        const savedPath = await triggerDownloadAndSave(page, {
+            downloadPath,
+            fileName: filePrefix,
+            trigger: async () => {
+                await page.waitForSelector(downloadButtonSelector, { visible: true });
+                await realClick(page, downloadButtonSelector);
+                await page.waitForSelector(overlayOptionSelector, { visible: true, timeout: 15000 });
+
+                await page.evaluate((sel) => {
+                    const rows = Array.from(document.querySelectorAll<HTMLDivElement>(sel));
+                    const csvBtn = rows.find((r) => r.textContent?.toLowerCase().includes('.csv'));
+                    if (csvBtn) {
+                        csvBtn.click();
+                    } else {
+                        rows[0]?.click();
+                    }
+                }, overlayOptionSelector);
+            },
+            startTimeout: 30000,
+            finishTimeout: 180000,
+            retries: 2,
+            retryDelayMs: 3000,
+        });
+        log.info(`[${filePrefix}] Download do relatório CSV concluído com sucesso: ${savedPath}`);
     } catch (error) {
-        log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha no download CSV:`);
+        log.error({ data: formatError(error) }, `[${filePrefix}] Falha no download CSV:`);
     }
 }
 
@@ -259,51 +242,58 @@ export async function scrapePraticasAssistenciais(page: Page, moduleName: string
         const availableYears = await getAvailableYears(page);
 
         for (let p = 0; p < totalParametros; p++) {
-            const paramLabel = await page.evaluate((sel, idx) => {
-                const buttons = document.querySelectorAll<HTMLButtonElement>(sel);
-                const target = buttons[idx];
-                target?.click();
-                const label = target?.querySelector('.radio-label')?.textContent?.trim() || `param-${idx}`;
-                return label
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '')
-                    .replace(/[^a-zA-Z0-9_-]/g, '_')
-                    .replace(/_+/g, '_')
-                    .toLowerCase();
-            }, radioCardsSelector, p);
+            await safeRunCombination(`${tabInfo.slug}_param-${p}`, async () => {
+                const paramLabel = await page.evaluate((sel, idx) => {
+                    const buttons = document.querySelectorAll<HTMLButtonElement>(sel);
+                    const target = buttons[idx];
+                    target?.click();
+                    const label = target?.querySelector('.radio-label')?.textContent?.trim() || `param-${idx}`;
+                    return label
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-zA-Z0-9_-]/g, '_')
+                        .replace(/_+/g, '_')
+                        .toLowerCase();
+                }, radioCardsSelector, p);
 
-            await new Promise((r) => setTimeout(r, 800));
+                await new Promise((r) => setTimeout(r, 800));
 
-            for (const yearIdx of availableYears) {
-                const yearLabel = await configureCompetenciasPorAno(page, yearIdx);
+                for (const yearIdx of availableYears) {
+                    await safeRunCombination(`${tabInfo.slug}_${paramLabel}_anoIdx-${yearIdx}`, async () => {
+                        const yearLabel = await configureCompetenciasPorAno(page, yearIdx);
 
-                for (let l = 0; l < totalLinhaOptions; l++) {
-                    const linhaLabel = await selectPrimeNgOptionByIndex(page, linhaDropdownSelector, l);
+                        for (let l = 0; l < totalLinhaOptions; l++) {
+                            await safeRunCombination(`${tabInfo.slug}_${paramLabel}_ano-${yearLabel}_l-${l}`, async () => {
+                                const linhaLabel = await selectPrimeNgOptionByIndex(page, linhaDropdownSelector, l);
 
-                    for (let c = 0; c < totalColunaOptions; c++) {
-                        const colunaLabel = await selectPrimeNgOptionByIndex(page, colunaDropdownSelector, c);
+                                for (let c = 0; c < totalColunaOptions; c++) {
+                                    await safeRunCombination(`${tabInfo.slug}_${paramLabel}_ano-${yearLabel}_l-${l}_c-${c}`, async () => {
+                                        const colunaLabel = await selectPrimeNgOptionByIndex(page, colunaDropdownSelector, c);
+                                        log.info(`[${tabInfo.slug}] Consulta: [${paramLabel}] | Ano [${yearLabel}] | Linha [${linhaLabel}] | Coluna [${colunaLabel}]`);
 
-                        log.info(`[${tabInfo.slug}] Consulta: [${paramLabel}] | Ano [${yearLabel}] | Linha [${linhaLabel}] | Coluna [${colunaLabel}]`);
+                                        const btnRealizarConsultaSel = 'p-tabpanel:not([hidden]) botao-realizar-consulta button.br-button.primary';
+                                        await page.waitForSelector(btnRealizarConsultaSel, { visible: true });
+                                        await realClick(page, btnRealizarConsultaSel);
 
-                        const btnRealizarConsultaSel = 'p-tabpanel:not([hidden]) botao-realizar-consulta button.br-button.primary';
-                        await page.waitForSelector(btnRealizarConsultaSel, { visible: true });
-                        await page.click(btnRealizarConsultaSel);
+                                        const btnDownloadSel = 'p-tabpanel:not([hidden]) download-button button.br-button';
+                                        await page.waitForFunction(
+                                            (btnSel) => {
+                                                const btn = document.querySelector<HTMLButtonElement>(btnSel);
+                                                return btn && !btn.disabled;
+                                            },
+                                            { timeout: 180000 },
+                                            btnDownloadSel
+                                        );
 
-                        const btnDownloadSel = 'p-tabpanel:not([hidden]) download-button button.br-button';
-                        await page.waitForFunction(
-                            (btnSel) => {
-                                const btn = document.querySelector<HTMLButtonElement>(btnSel);
-                                return btn && !btn.disabled;
-                            },
-                            { timeout: 180000 },
-                            btnDownloadSel
-                        );
-
-                        const filePrefix = `${tabInfo.slug}_${paramLabel}_ano-${yearLabel}_l-${l}_c-${c}`;
-                        await doDownloadCsv(page, tabDownloadPath, filePrefix);
-                    }
+                                        const filePrefix = `${tabInfo.slug}_${paramLabel}_ano-${yearLabel}_l-${l}_c-${c}`;
+                                        await doDownloadCsv(page, tabDownloadPath, filePrefix);
+                                    });
+                                }
+                            });
+                        }
+                    });
                 }
-            }
+            });
         }
     }
 

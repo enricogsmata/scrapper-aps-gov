@@ -550,3 +550,12 @@ export const acoesEProgramasIndicadorPainel = mysqlTable(
   }
 );
 
+export const acoesEProgramasIndicadorCadastro = mysqlTable(
+  "acoes_e_programas_indicador_cadastro",
+  {
+    id: serial("id").primaryKey(),
+    competencia: text("competencia"),
+    total: text("total"),
+  }
+);
+

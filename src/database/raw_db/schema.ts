@@ -580,3 +580,29 @@ export const acoesEProgramasIndicadorPrenatal = mysqlTable(
   }
 );
 
+export const acoesEProgramasSaudeAtividadeColetiva = mysqlTable(
+  "acoes_e_programas_saude_atividade_coletiva",
+  {
+    id: serial("id").primaryKey(),
+    brasil: text("brasil"),
+    quantidadeAtividade: text("quantidade_atividade"),
+    numParticipantes: text("num_participantes"),
+  }
+);
+
+export const acoesEProgramasDescontinuadosInformatizaAps = mysqlTable(
+  "acoes_e_programas_descontinuados_informatiza_aps",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    ine: text("ine"),
+    tipoDaEquipe: text("tipo_da_equipe"),
+    subtipoDaEquipe: text("subtipo_da_equipe"),
+    situacao: text("situacao"),
+    portariaDeHomologacao: text("portaria_de_homologacao"),
+    portariaDeCancelamento: text("portaria_de_cancelamento"),
+  }
+);
+

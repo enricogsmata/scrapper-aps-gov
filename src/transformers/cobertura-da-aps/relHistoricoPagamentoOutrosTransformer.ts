@@ -4,6 +4,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { Readable } from "node:stream";
 import AdmZip from "adm-zip";
+import xlsx from "xlsx";
 import pino from "pino";
 import { raw_db } from "../../database/raw_db/connection.js";
 import { relHistoricoPagamentoOutros } from "../../database/raw_db/schema.js";
@@ -53,6 +54,43 @@ function getValue(
     }
   }
   return "";
+}
+
+function mapRowToRecord(
+  row: Record<string, string>
+): typeof relHistoricoPagamentoOutros.$inferInsert {
+  return {
+    ibge: getValue(row, "ibge"),
+    uf: getValue(row, "uf"),
+    municipio: getValue(row, "municipio"),
+    financeira: getValue(row, "financeira"),
+    cnrICreden: getValue(row, "cnricreden"),
+    cnrIiCreden: getValue(row, "cnriicreden"),
+    cnrIiiCreden: getValue(row, "cnriiicreden"),
+    cnrIInformado: getValue(row, "cnriinformado"),
+    cnrIiInformado: getValue(row, "cnriiinformado"),
+    cnrIiiInformado: getValue(row, "cnriiiinformado"),
+    cnrIPago: getValue(row, "cnripago"),
+    cnrIiPago: getValue(row, "cnriipago"),
+    cnrIiiPago: getValue(row, "cnriiipago"),
+    microscopistaCred: getValue(row, "microscopistacred"),
+    microscopistaInformados: getValue(row, "microscopistainformados"),
+    microscopistaPago: getValue(row, "microscopistapago"),
+    uomCred: getValue(row, "uomcred"),
+    uomInformado: getValue(row, "uominformado"),
+    uomPago: getValue(row, "uompago"),
+    ubsfCred: getValue(row, "ubsfcred"),
+    ubsfsbCred: getValue(row, "ubsfsbcred"),
+    ubsfComEsffInformado: getValue(row, "ubsfcomesffinformado"),
+    ubsfComEsffsbInformado: getValue(row, "ubsfcomesffsbinformado"),
+    ubsfComEsffMmInformado: getValue(row, "ubsfcomesffmminformado"),
+    ubsfComEsffsbMmInformado: getValue(row, "ubsfcomesffsbmminformado"),
+    ubsfPago: getValue(row, "ubsfpago"),
+    gestaoCred: getValue(row, "gestaocred"),
+    eabpCred: getValue(row, "eabpcred"),
+    eabpInformado: getValue(row, "eabpinformado"),
+    eabpPago: getValue(row, "eabppago"),
+  };
 }
 
 async function processCsvBuffer(
@@ -105,38 +143,7 @@ async function processCsvBuffer(
       row[headers[i]] = values[i]?.trim() ?? "";
     }
 
-    records.push({
-      ibge: getValue(row, "ibge"),
-      uf: getValue(row, "uf"),
-      municipio: getValue(row, "municipio"),
-      financeira: getValue(row, "financeira"),
-      cnrICreden: getValue(row, "cnricreden"),
-      cnrIiCreden: getValue(row, "cnriicreden"),
-      cnrIiiCreden: getValue(row, "cnriiicreden"),
-      cnrIInformado: getValue(row, "cnriinformado"),
-      cnrIiInformado: getValue(row, "cnriiinformado"),
-      cnrIiiInformado: getValue(row, "cnriiiinformado"),
-      cnrIPago: getValue(row, "cnripago"),
-      cnrIiPago: getValue(row, "cnriipago"),
-      cnrIiiPago: getValue(row, "cnriiipago"),
-      microscopistaCred: getValue(row, "microscopistacred"),
-      microscopistaInformados: getValue(row, "microscopistainformados"),
-      microscopistaPago: getValue(row, "microscopistapago"),
-      uomCred: getValue(row, "uomcred"),
-      uomInformado: getValue(row, "uominformado"),
-      uomPago: getValue(row, "uompago"),
-      ubsfCred: getValue(row, "ubsfcred"),
-      ubsfsbCred: getValue(row, "ubsfsbcred"),
-      ubsfComEsffInformado: getValue(row, "ubsfcomesffinformado"),
-      ubsfComEsffsbInformado: getValue(row, "ubsfcomesffsbinformado"),
-      ubsfComEsffMmInformado: getValue(row, "ubsfcomesffmminformado"),
-      ubsfComEsffsbMmInformado: getValue(row, "ubsfcomesffsbmminformado"),
-      ubsfPago: getValue(row, "ubsfpago"),
-      gestaoCred: getValue(row, "gestaocred"),
-      eabpCred: getValue(row, "eabpcred"),
-      eabpInformado: getValue(row, "eabpinformado"),
-      eabpPago: getValue(row, "eabppago"),
-    });
+    records.push(mapRowToRecord(row));
 
     if (records.length >= batchSize) {
       await raw_db.insert(relHistoricoPagamentoOutros).values(records);
@@ -151,6 +158,76 @@ async function processCsvBuffer(
   }
 
   logger.info({ fileName, totalInserted }, "CSV processado com sucesso.");
+}
+
+async function processExcelBuffer(
+  excelBuffer: Buffer,
+  fileName: string
+): Promise<void> {
+  const workbook = xlsx.read(excelBuffer, { type: "buffer" });
+  let totalInserted = 0;
+  const batchSize = 1000;
+
+  for (const sheetName of workbook.SheetNames) {
+    if (sheetName.toLowerCase().includes("informac")) continue;
+
+    const worksheet = workbook.Sheets[sheetName];
+    if (!worksheet) continue;
+
+    const rawRows = xlsx.utils.sheet_to_json<unknown[]>(worksheet, {
+      header: 1,
+      defval: "",
+    });
+
+    let headerIdx = -1;
+    for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+      const rowLine = (rawRows[i] ?? []).map((c) => String(c).trim());
+      const normalized = rowLine.map(normalizeHeader);
+      if (
+        normalized.includes("ibge") &&
+        normalized.includes("uf") &&
+        normalized.includes("municipio")
+      ) {
+        headerIdx = i;
+        break;
+      }
+    }
+
+    if (headerIdx === -1) continue;
+
+    const rows = xlsx.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+      range: headerIdx,
+      defval: "",
+    });
+
+    if (rows.length === 0) continue;
+
+    let records: (typeof relHistoricoPagamentoOutros.$inferInsert)[] = [];
+
+    for (const rawRow of rows) {
+      const stringRow: Record<string, string> = {};
+      for (const [k, v] of Object.entries(rawRow)) {
+        stringRow[k] = v != null ? String(v).trim() : "";
+      }
+
+      if (!stringRow.IBGE && !stringRow.UF && !stringRow.MUNICIPIO) continue;
+
+      records.push(mapRowToRecord(stringRow));
+
+      if (records.length >= batchSize) {
+        await raw_db.insert(relHistoricoPagamentoOutros).values(records);
+        totalInserted += records.length;
+        records = [];
+      }
+    }
+
+    if (records.length > 0) {
+      await raw_db.insert(relHistoricoPagamentoOutros).values(records);
+      totalInserted += records.length;
+    }
+  }
+
+  logger.info({ fileName, totalInserted }, "Excel processado com sucesso.");
 }
 
 export async function transformRelHistoricoPagamentoOutros(): Promise<void> {
@@ -179,18 +256,26 @@ export async function transformRelHistoricoPagamentoOutros(): Promise<void> {
         const zipEntries = zip.getEntries();
 
         for (const entry of zipEntries) {
-          if (
-            entry.isDirectory ||
-            !entry.entryName.toLowerCase().endsWith(".csv")
-          ) {
-            continue;
-          }
+          if (entry.isDirectory) continue;
+
+          const entryName = entry.entryName.toLowerCase();
           const entryBuffer = entry.getData();
-          await processCsvBuffer(entryBuffer, entry.entryName);
+
+          if (entryName.endsWith(".csv")) {
+            await processCsvBuffer(entryBuffer, entry.entryName);
+          } else if (entryName.endsWith(".xls") || entryName.endsWith(".xlsx")) {
+            await processExcelBuffer(entryBuffer, entry.entryName);
+          }
         }
       } else if (file.toLowerCase().endsWith(".csv")) {
         const fileBuffer = await fs.readFile(filePath);
         await processCsvBuffer(fileBuffer, file);
+      } else if (
+        file.toLowerCase().endsWith(".xls") ||
+        file.toLowerCase().endsWith(".xlsx")
+      ) {
+        const fileBuffer = await fs.readFile(filePath);
+        await processExcelBuffer(fileBuffer, file);
       }
     } catch (error) {
       logger.error(

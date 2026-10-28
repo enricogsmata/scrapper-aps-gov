@@ -14,7 +14,11 @@ export async function getPrimeNgDropdownOptionsCount(page: Page, dropdownSelecto
     }, dropdownSelector);
 
     const panelSelector = 'body > .p-overlay .p-dropdown-panel, body > .p-dropdown-panel, .p-dropdown-panel';
-    await page.waitForSelector(panelSelector, { visible: true, timeout: 15000 });
+    try {
+        await page.waitForSelector(panelSelector, { visible: true, timeout: 5000 });
+    } catch (error) {
+        return 0;
+    }
 
     const count = await page.evaluate((panelSel) => {
         const panels = Array.from(document.querySelectorAll<HTMLElement>(panelSel));

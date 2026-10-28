@@ -84,53 +84,61 @@ async function processEscola(page: Page, downloadPath: string, prefix: string): 
     if (await isDropdownActive(page, SELECTORS.escola)) {
         await new Promise(r => setTimeout(r, 2000));
         const numEscolas = await getPrimeNgDropdownOptionsCount(page, SELECTORS.escola);
-        for (let e = 0; e < numEscolas; e++) {
-            await selectPrimeNgDropdownOption(page, SELECTORS.escola, e);
-            await new Promise(r => setTimeout(r, 1000));
-            await doDownload(page, downloadPath, `${prefix}_esc-${e}`);
+        if (numEscolas > 0) {
+            for (let e = 0; e < numEscolas; e++) {
+                await selectPrimeNgDropdownOption(page, SELECTORS.escola, e);
+                await new Promise(r => setTimeout(r, 1000));
+                await doDownload(page, downloadPath, `${prefix}_esc-${e}`);
+            }
+            return;
         }
-    } else {
-        await doDownload(page, downloadPath, prefix);
     }
+    await doDownload(page, downloadPath, prefix);
 }
 
 async function processLocalizacaoDiferenciada(page: Page, downloadPath: string, prefix: string): Promise<void> {
     if (await isDropdownActive(page, SELECTORS.localizacaoDiferenciada)) {
         const numLocDif = await getPrimeNgDropdownOptionsCount(page, SELECTORS.localizacaoDiferenciada);
-        for (let ld = 0; ld < numLocDif; ld++) {
-            await selectPrimeNgDropdownOption(page, SELECTORS.localizacaoDiferenciada, ld);
-            await new Promise(r => setTimeout(r, 1000));
-            await processEscola(page, downloadPath, `${prefix}_locDif-${ld}`);
+        if (numLocDif > 0) {
+            for (let ld = 0; ld < numLocDif; ld++) {
+                await selectPrimeNgDropdownOption(page, SELECTORS.localizacaoDiferenciada, ld);
+                await new Promise(r => setTimeout(r, 1000));
+                await processEscola(page, downloadPath, `${prefix}_locDif-${ld}`);
+            }
+            return;
         }
-    } else {
-        await processEscola(page, downloadPath, prefix);
     }
+    await processEscola(page, downloadPath, prefix);
 }
 
 async function processTipoLocalizacao(page: Page, downloadPath: string, prefix: string): Promise<void> {
     if (await isDropdownActive(page, SELECTORS.tipoLocalizacao)) {
         const numTipoLoc = await getPrimeNgDropdownOptionsCount(page, SELECTORS.tipoLocalizacao);
-        for (let tl = 0; tl < numTipoLoc; tl++) {
-            await selectPrimeNgDropdownOption(page, SELECTORS.tipoLocalizacao, tl);
-            await new Promise(r => setTimeout(r, 1000));
-            await processLocalizacaoDiferenciada(page, downloadPath, `${prefix}_tipoLoc-${tl}`);
+        if (numTipoLoc > 0) {
+            for (let tl = 0; tl < numTipoLoc; tl++) {
+                await selectPrimeNgDropdownOption(page, SELECTORS.tipoLocalizacao, tl);
+                await new Promise(r => setTimeout(r, 1000));
+                await processLocalizacaoDiferenciada(page, downloadPath, `${prefix}_tipoLoc-${tl}`);
+            }
+            return;
         }
-    } else {
-        await processLocalizacaoDiferenciada(page, downloadPath, prefix);
     }
+    await processLocalizacaoDiferenciada(page, downloadPath, prefix);
 }
 
 async function processCiclo(page: Page, downloadPath: string, prefix: string): Promise<void> {
     if (await isDropdownActive(page, SELECTORS.ciclo)) {
         const numCiclos = await getPrimeNgDropdownOptionsCount(page, SELECTORS.ciclo);
-        for (let c = 0; c < numCiclos; c++) {
-            await selectPrimeNgDropdownOption(page, SELECTORS.ciclo, c);
-            await new Promise(r => setTimeout(r, 2000));
-            await processTipoLocalizacao(page, downloadPath, `${prefix}_ciclo-${c}`);
+        if (numCiclos > 0) {
+            for (let c = 0; c < numCiclos; c++) {
+                await selectPrimeNgDropdownOption(page, SELECTORS.ciclo, c);
+                await new Promise(r => setTimeout(r, 2000));
+                await processTipoLocalizacao(page, downloadPath, `${prefix}_ciclo-${c}`);
+            }
+            return;
         }
-    } else {
-        await processTipoLocalizacao(page, downloadPath, prefix);
     }
+    await processTipoLocalizacao(page, downloadPath, prefix);
 }
 
 export async function scrapeAdesaoPse(page: Page, moduleName: string, targetUrl: string): Promise<void> {
@@ -153,14 +161,16 @@ export async function scrapeAdesaoPse(page: Page, moduleName: string, targetUrl:
 
         if (await isDropdownActive(page, SELECTORS.municipio)) {
             const numMunicipios = await getPrimeNgDropdownOptionsCount(page, SELECTORS.municipio);
-            for (let m = 0; m < numMunicipios; m++) {
-                await selectPrimeNgDropdownOption(page, SELECTORS.municipio, m);
-                await new Promise(r => setTimeout(r, 1500));
-                await processCiclo(page, downloadPath, `uf-${u}_mun-${m}`);
+            if (numMunicipios > 0) {
+                for (let m = 0; m < numMunicipios; m++) {
+                    await selectPrimeNgDropdownOption(page, SELECTORS.municipio, m);
+                    await new Promise(r => setTimeout(r, 1500));
+                    await processCiclo(page, downloadPath, `uf-${u}_mun-${m}`);
+                }
+                continue;
             }
-        } else {
-            await processCiclo(page, downloadPath, `uf-${u}`);
         }
+        await processCiclo(page, downloadPath, `uf-${u}`);
     }
 
     log.info('Extração finalizada para: Adesão PSE.');

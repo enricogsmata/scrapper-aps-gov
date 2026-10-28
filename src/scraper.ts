@@ -149,7 +149,7 @@ export async function runScrapper(): Promise<void> {
                     } else if (link.includes('praticas-assistenciais')) {
                         await scrapePraticasAssistenciais(page, moduleName, link);
                     } else if (link.includes('siaps.saude.gov.br')) {
-                        await scrapeSiapsPublico(page, moduleName, link);
+                        //await scrapeSiapsPublico(page, moduleName, link);
                     } else {
                         log.info(`Link não mapeado para scraper específico: ${link}`);
                     }

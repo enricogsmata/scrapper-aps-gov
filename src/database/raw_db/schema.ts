@@ -656,3 +656,14 @@ export const siapsPublico = mysqlTable("siaps_publico", {
   totalDeEquipeOtimo: text("total_de_equipe_otimo"),
 });
 
+export const siapsPublicoPraticasAssistenciaisAtendimentosIndividuais = mysqlTable(
+  "siaps_publico_praticas_assistenciais_atendimentos_individuais",
+  {
+    id: serial("id").primaryKey(),
+    brasil: text("brasil"),
+    masculino: text("masculino"),
+    feminino: text("feminino"),
+    total: text("total"),
+  }
+);
+

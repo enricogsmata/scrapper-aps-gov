@@ -627,3 +627,18 @@ export const acoesEProgramasRelpagamentopmaq = mysqlTable(
   }
 );
 
+export const acoesEProgramasDescontinuadosAdesaoSaudeHora = mysqlTable(
+  "acoes_e_programas_descontinuados_adesao_saude_hora",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    cnes: text("cnes"),
+    tipoDaAdesao: text("tipo_da_adesao"),
+    situacaoDaAdesao: text("situacao_da_adesao"),
+    portariaDeAdesao: text("portaria_de_adesao"),
+    portariaDeCancelamento: text("portaria_de_cancelamento"),
+  }
+);
+

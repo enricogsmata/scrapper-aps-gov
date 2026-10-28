@@ -571,3 +571,12 @@ export const acoesEProgramasSaudeProducao = mysqlTable(
   }
 );
 
+export const acoesEProgramasIndicadorPrenatal = mysqlTable(
+  "acoes_e_programas_indicador_prenatal",
+  {
+    id: serial("id").primaryKey(),
+    competencia: text("competencia"),
+    totalGestantes: text("total_gestantes"),
+  }
+);
+

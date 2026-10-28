@@ -530,3 +530,9 @@ export const acoesEProgramasHomologacaoSaudeComAgente = mysqlTable(
   }
 );
 
+export const sisabValidacao = mysqlTable("sisab_validacao", {
+  id: serial("id").primaryKey(),
+  validacao: text("validacao"),
+  total: text("total"),
+});
+

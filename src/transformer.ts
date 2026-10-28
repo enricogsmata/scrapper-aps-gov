@@ -1,6 +1,7 @@
 // src/transformer.ts
 import { transformAcoesEProgramasAdesaoPse } from "./transformers/acoes-e-programas/acoesEProgramasAdesaoPseTransformer.js";
 import { transformAcoesEProgramasHomologacaoSaudeComAgente } from "./transformers/acoes-e-programas/acoesEProgramasHomologacaoSaudeComAgenteTransformer.js";
+import { transformSisabValidacao } from "./transformers/acoes-e-programas/sisabValidacaoTransformer.js";
 import { transformCoberturaAcs } from "./transformers/cobertura-da-aps/coberturaAcsTransformer.js";
 import { transformCoberturaApsHistorico } from "./transformers/cobertura-da-aps/coberturaApsHistoricoTransformer.js";
 import { transformCoberturaAps } from "./transformers/cobertura-da-aps/coberturaApsTransformer.js";
@@ -33,4 +34,5 @@ import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transforme
 //await transformRelHistoricoPagamentoEsf();
 //await transformRelHistoricoPagamentoOutros();
 //await transformAcoesEProgramasAdesaoPse();
-await transformAcoesEProgramasHomologacaoSaudeComAgente();
+//await transformAcoesEProgramasHomologacaoSaudeComAgente();
+await transformSisabValidacao();

@@ -135,11 +135,11 @@ export async function runScrapper(): Promise<void> {
                     //await scrapeCoberturaAcs(page, moduleName, link);
                     //continue;
                 } else if (link.includes('mapas.sus.c3sl.ufpr.br')) {
-                    await scrapeMapasSus(page, moduleName, link);
-                    continue;
+                    //await scrapeMapasSus(page, moduleName, link);
+                    //continue;
                 } else if (link.includes('relHistoricoPagamentoIndex')) {
-                    await scrapeHistoricoPagamentoIndex(page, moduleName, link);
-                    continue;
+                    //await scrapeHistoricoPagamentoIndex(page, moduleName, link);
+                    //continue;
                 } else if (link.includes('adesao/pse')) {
                     await scrapeAdesaoPse(page, moduleName, link);
                     continue;

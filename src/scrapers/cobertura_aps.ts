@@ -1,10 +1,16 @@
 // src/scrapers/cobertura_aps.ts
 import { Page } from "puppeteer";
 import * as path from "path";
-import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
-import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption } from "../primeng_helpers.js";
-import { setupDownloadBehavior, triggerDownloadAndSave } from "../downloader.js";
+import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption, isDropdownActive } from "../primeng_helpers.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeDownloadJsonFromResponse,
+    safeRunCombination
+} from "../downloader.js";
 import { scrapeCoberturaHistorico } from "./cobertura_historico.js";
 
 const logger = new_logger(import.meta.url);
@@ -37,36 +43,6 @@ const GEOGRAPHIC_DROPDOWNS = [
     { key: 'municipio', selector: SELECTORS.municipio }
 ];
 
-function errorMessage(error: unknown): string {
-    // JSON.stringify(new Error(...)) retorna "{}" (message/stack não são enumeráveis),
-    // por isso o log anterior mostrava data: "{}".
-    return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-}
-
-async function isDropdownActive(page: Page, selector: string): Promise<boolean> {
-    return page.evaluate((sel) => {
-        const el = document.querySelector(sel);
-        if (!el) return false;
-        const dropdown = el.querySelector('.p-dropdown');
-        if (!dropdown) return false;
-        return !dropdown.classList.contains('p-disabled') && (dropdown as HTMLElement).offsetParent !== null;
-    }, selector);
-}
-
-/**
- * Clique "de verdade" (mouse do Puppeteer) no botão. Diferente de btn.click() dentro do
- * page.evaluate, gera um evento confiável (isTrusted) com ativação do usuário, o que evita
- * que o Chrome bloqueie downloads disparados sem gesto do usuário.
- */
-async function realClick(page: Page, selector: string): Promise<void> {
-    const handle = await page.waitForSelector(selector, { visible: true, timeout: 15000 });
-    if (!handle) throw new Error(`Elemento não encontrado: ${selector}`);
-    // block: 'center' evita que o header sticky cubra o botão
-    await handle.evaluate((el) => (el as HTMLElement).scrollIntoView({ behavior: 'instant', block: 'center' }));
-    await new Promise((r) => setTimeout(r, 500));
-    await handle.click();
-}
-
 async function doDownload(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
     const log = logger.forMethod('doDownload');
 
@@ -88,31 +64,19 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
 
         log.info(`[${filePrefix}] Botão de download bloqueado. Tentando via requisição (Ver em tela)...`);
 
-        const responsePromise = page.waitForResponse(
-            response => response.url().includes('/cobertura/aps') && response.request().method() === 'GET',
-            { timeout: 60000 }
-        );
-
-        await page.evaluate(() => {
-            window.scrollTo(0, document.body.scrollHeight);
-        });
-        await new Promise((r) => setTimeout(r, 1000));
-
-        await page.evaluate((sel) => {
-            const btn = document.querySelector<HTMLButtonElement>(sel);
-            btn?.scrollIntoView({ behavior: 'instant', block: 'center' });
-            btn?.click();
-        }, SELECTORS.btnVerTela);
-
         try {
-            const response = await responsePromise;
-            const json = await response.json();
-
-            const filePath = path.join(downloadPath, `${filePrefix}.json`);
-            fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
-            log.info(`[${filePrefix}] Dados salvos em JSON com sucesso.`);
+            await safeDownloadJsonFromResponse(
+                page,
+                downloadPath,
+                filePrefix,
+                async () => {
+                    await realClick(page, SELECTORS.btnVerTela);
+                },
+                '/cobertura/aps',
+                { retries: 2, retryDelayMs: 3000 }
+            );
         } catch (error) {
-            log.error({ data: errorMessage(error) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
+            log.error({ data: formatError(error) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
         }
     } else {
         log.info(`[${filePrefix}] Botão de download habilitado. Realizando download do arquivo...`);
@@ -124,10 +88,12 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
                 trigger: () => realClick(page, SELECTORS.btnDownload),
                 startTimeout: 30000,
                 finishTimeout: 180000,
+                retries: 2,
+                retryDelayMs: 3000,
             });
             log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso: ${path.basename(savedPath)}`);
         } catch (error) {
-            log.error({ data: errorMessage(error) }, `[${filePrefix}] Falha no download do arquivo:`);
+            log.error({ data: formatError(error) }, `[${filePrefix}] Falha no download do arquivo:`);
         }
     }
 }
@@ -136,19 +102,23 @@ async function processCompetencias(page: Page, downloadPath: string, prefix: str
     if (await isDropdownActive(page, SELECTORS.compInicio)) {
         const numInicio = await getPrimeNgDropdownOptionsCount(page, SELECTORS.compInicio);
         for (let i = 0; i < numInicio; i++) {
-            await selectPrimeNgDropdownOption(page, SELECTORS.compInicio, i);
-            await new Promise(r => setTimeout(r, 1000));
+            await safeRunCombination(`${prefix}_compIni-${i}`, async () => {
+                await selectPrimeNgDropdownOption(page, SELECTORS.compInicio, i);
+                await new Promise(r => setTimeout(r, 1000));
 
-            if (await isDropdownActive(page, SELECTORS.compFim)) {
-                const numFim = await getPrimeNgDropdownOptionsCount(page, SELECTORS.compFim);
-                for (let f = 0; f < numFim; f++) {
-                    await selectPrimeNgDropdownOption(page, SELECTORS.compFim, f);
-                    await new Promise(r => setTimeout(r, 500));
-                    await doDownload(page, downloadPath, `${prefix}_compIni-${i}_compFim-${f}`);
+                if (await isDropdownActive(page, SELECTORS.compFim)) {
+                    const numFim = await getPrimeNgDropdownOptionsCount(page, SELECTORS.compFim);
+                    for (let f = 0; f < numFim; f++) {
+                        await safeRunCombination(`${prefix}_compIni-${i}_compFim-${f}`, async () => {
+                            await selectPrimeNgDropdownOption(page, SELECTORS.compFim, f);
+                            await new Promise(r => setTimeout(r, 500));
+                            await doDownload(page, downloadPath, `${prefix}_compIni-${i}_compFim-${f}`);
+                        });
+                    }
+                } else {
+                    await doDownload(page, downloadPath, `${prefix}_compIni-${i}`);
                 }
-            } else {
-                await doDownload(page, downloadPath, `${prefix}_compIni-${i}`);
-            }
+            });
         }
     } else {
         await doDownload(page, downloadPath, prefix);
@@ -172,10 +142,12 @@ async function iterateGeographicDropdowns(
     if (await isDropdownActive(page, currentDropdown.selector)) {
         const count = await getPrimeNgDropdownOptionsCount(page, currentDropdown.selector);
         for (let i = 0; i < count; i++) {
-            await selectPrimeNgDropdownOption(page, currentDropdown.selector, i);
-            await new Promise(r => setTimeout(r, 1000));
             const nextPrefix = `${currentPrefix}_${currentDropdown.key}-${i}`;
-            await iterateGeographicDropdowns(page, dropdowns, currentIndex + 1, downloadPath, nextPrefix);
+            await safeRunCombination(nextPrefix, async () => {
+                await selectPrimeNgDropdownOption(page, currentDropdown.selector, i);
+                await new Promise(r => setTimeout(r, 1000));
+                await iterateGeographicDropdowns(page, dropdowns, currentIndex + 1, downloadPath, nextPrefix);
+            });
         }
     } else {
         await iterateGeographicDropdowns(page, dropdowns, currentIndex + 1, downloadPath, currentPrefix);
@@ -224,6 +196,8 @@ export async function scrapeCoberturaAps(page: Page, moduleName: string, targetU
         const histPage = await page.browser().newPage();
         try {
             await scrapeCoberturaHistorico(histPage, historicoDownloadPath, link);
+        } catch (error) {
+            log.error({ data: formatError(error) }, `Erro ao extrair histórico de cobertura (${link}):`);
         } finally {
             await histPage.close();
         }

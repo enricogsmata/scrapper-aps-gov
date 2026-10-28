@@ -2,7 +2,13 @@
 import { Page } from "puppeteer";
 import * as path from "path";
 import { new_logger } from "../services/logs.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -27,22 +33,31 @@ async function doDownloadOutros(page: Page, downloadPath: string, prefix: string
         return;
     }
 
-    const filesBefore = getFilesInDir(downloadPath);
     log.info(`[${prefix}] Iniciando download...`);
 
-    await page.evaluate((sel) => {
-        document.querySelector<HTMLInputElement>(sel)?.click();
-    }, btnSelector);
-
     try {
-        await waitForNewDownloadAndRename(downloadPath, filesBefore, prefix, 120000);
-        log.info(`[${prefix}] Download concluído.`);
+        const savedPath = await triggerDownloadAndSave(page, {
+            downloadPath,
+            fileName: prefix,
+            trigger: () => realClick(page, btnSelector),
+            startTimeout: 30000,
+            finishTimeout: 180000,
+            retries: 2,
+            retryDelayMs: 3000,
+        });
+        log.info(`[${prefix}] Download concluído com sucesso: ${savedPath}`);
     } catch (error) {
-        log.error({ data: JSON.stringify(error, null, 4) }, `[${prefix}] Falha no download:`);
+        log.error({ data: formatError(error) }, `[${prefix}] Falha no download:`);
     }
 }
 
-async function processFieldOutros(page: Page, fields: string[], currentIndex: number, currentPrefix: string, downloadPath: string): Promise<void> {
+async function processFieldOutros(
+    page: Page,
+    fields: string[],
+    currentIndex: number,
+    currentPrefix: string,
+    downloadPath: string
+): Promise<void> {
     const log = logger.forMethod('processFieldOutros');
 
     if (currentIndex >= fields.length) {
@@ -75,23 +90,24 @@ async function processFieldOutros(page: Page, fields: string[], currentIndex: nu
     }
 
     for (const opt of options) {
-        await page.evaluate((sel, val) => {
-            const jq = (window as any).$;
-            if (jq && jq(sel).length) {
-                jq(sel).val(val).trigger('change');
-            } else {
-                const el = document.querySelector<HTMLSelectElement>(sel);
-                if (el) {
-                    el.value = val;
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            }
-        }, fieldSelector, opt);
-
-        await new Promise(r => setTimeout(r, 1500));
-
         const nextPrefix = currentPrefix ? `${currentPrefix}_${opt}` : opt;
-        await processFieldOutros(page, fields, currentIndex + 1, nextPrefix, downloadPath);
+        await safeRunCombination(nextPrefix, async () => {
+            await page.evaluate((sel, val) => {
+                const jq = (window as any).$;
+                if (jq && jq(sel).length) {
+                    jq(sel).val(val).trigger('change');
+                } else {
+                    const el = document.querySelector<HTMLSelectElement>(sel);
+                    if (el) {
+                        el.value = val;
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }, fieldSelector, opt);
+
+            await new Promise(r => setTimeout(r, 1500));
+            await processFieldOutros(page, fields, currentIndex + 1, nextPrefix, downloadPath);
+        });
     }
 }
 
@@ -111,20 +127,24 @@ async function scrapeRelHistoricoPagamentoEsf(page: Page, downloadPath: string, 
     });
 
     for (const item of downloadLinks) {
-        const filesBefore = getFilesInDir(specificDownloadPath);
-        log.info(`Iniciando download do pacote: ${item.text}`);
-
-        await page.evaluate((idx) => {
-            const links = document.querySelectorAll<HTMLAnchorElement>('.callout a[onclick*="mojarra.jsfcljs"]');
-            links[idx]?.click();
-        }, item.index);
-
-        try {
-            await waitForNewDownloadAndRename(specificDownloadPath, filesBefore, item.text, 120000);
-            log.info(`Pacote baixado com sucesso: ${item.text}`);
-        } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `Falha ao baixar ${item.text}:`);
-        }
+        await safeRunCombination(item.text, async () => {
+            log.info(`Iniciando download do pacote: ${item.text}`);
+            const savedPath = await triggerDownloadAndSave(page, {
+                downloadPath: specificDownloadPath,
+                fileName: item.text,
+                trigger: async () => {
+                    const links = await page.$$('.callout a[onclick*="mojarra.jsfcljs"]');
+                    if (links[item.index]) {
+                        await realClick(page, links[item.index]);
+                    }
+                },
+                startTimeout: 30000,
+                finishTimeout: 180000,
+                retries: 2,
+                retryDelayMs: 3000,
+            });
+            log.info(`Pacote baixado com sucesso: ${savedPath}`);
+        });
     }
 }
 
@@ -161,6 +181,8 @@ export async function scrapeHistoricoPagamentoIndex(page: Page, moduleName: stri
             } else if (link.includes('relHistoricoPagamentoOutros')) {
                 await scrapeRelHistoricoPagamentoOutros(subPage, downloadPath, link);
             }
+        } catch (error) {
+            log.error({ data: formatError(error) }, `Erro ao processar link ${link} no Histórico de Pagamentos:`);
         } finally {
             await subPage.close();
         }

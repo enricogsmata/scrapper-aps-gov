@@ -2,7 +2,13 @@
 import { Page } from "puppeteer";
 import * as path from "path";
 import { new_logger } from "../services/logs.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -27,22 +33,31 @@ async function doDownload(page: Page, downloadPath: string, prefix: string): Pro
         return;
     }
 
-    const filesBefore = getFilesInDir(downloadPath);
     log.info(`[${prefix}] Disparando download do PMAQ...`);
 
-    await page.evaluate((sel) => {
-        document.querySelector<HTMLInputElement>(sel)?.click();
-    }, btnSelector);
-
     try {
-        await waitForNewDownloadAndRename(downloadPath, filesBefore, prefix, 120000);
-        log.info(`[${prefix}] Download concluído com sucesso.`);
+        const savedPath = await triggerDownloadAndSave(page, {
+            downloadPath,
+            fileName: prefix,
+            trigger: () => realClick(page, btnSelector),
+            startTimeout: 30000,
+            finishTimeout: 180000,
+            retries: 2,
+            retryDelayMs: 3000,
+        });
+        log.info(`[${prefix}] Download concluído com sucesso: ${savedPath}`);
     } catch (error) {
-        log.error({ data: JSON.stringify(error, null, 4) }, `[${prefix}] Falha no download:`);
+        log.error({ data: formatError(error) }, `[${prefix}] Falha no download:`);
     }
 }
 
-async function processField(page: Page, fields: string[], currentIndex: number, currentPrefix: string, downloadPath: string): Promise<void> {
+async function processField(
+    page: Page,
+    fields: string[],
+    currentIndex: number,
+    currentPrefix: string,
+    downloadPath: string
+): Promise<void> {
     const log = logger.forMethod('processField');
 
     if (currentIndex >= fields.length) {
@@ -75,23 +90,24 @@ async function processField(page: Page, fields: string[], currentIndex: number, 
     }
 
     for (const opt of options) {
-        await page.evaluate((sel, val) => {
-            const jq = (window as any).$;
-            if (jq && jq(sel).length) {
-                jq(sel).val(val).trigger('change');
-            } else {
-                const el = document.querySelector<HTMLSelectElement>(sel);
-                if (el) {
-                    el.value = val;
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            }
-        }, fieldSelector, opt);
-
-        await new Promise(r => setTimeout(r, 1500));
-
         const nextPrefix = currentPrefix ? `${currentPrefix}_${opt}` : opt;
-        await processField(page, fields, currentIndex + 1, nextPrefix, downloadPath);
+        await safeRunCombination(nextPrefix, async () => {
+            await page.evaluate((sel, val) => {
+                const jq = (window as any).$;
+                if (jq && jq(sel).length) {
+                    jq(sel).val(val).trigger('change');
+                } else {
+                    const el = document.querySelector<HTMLSelectElement>(sel);
+                    if (el) {
+                        el.value = val;
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }, fieldSelector, opt);
+
+            await new Promise(r => setTimeout(r, 1500));
+            await processField(page, fields, currentIndex + 1, nextPrefix, downloadPath);
+        });
     }
 }
 

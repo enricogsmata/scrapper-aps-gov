@@ -1,10 +1,16 @@
 // src/scrapers/pagamento.ts
 import { Page } from "puppeteer";
 import * as path from "path";
-import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
-import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption } from "../primeng_helpers.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption, isDropdownActive } from "../primeng_helpers.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeDownloadJsonFromResponse,
+    safeRunCombination
+} from "../downloader.js";
 import { scrapePagamentoHistorico } from "./pagamento-historico.js";
 
 const logger = new_logger(import.meta.url);
@@ -20,17 +26,6 @@ const SELECTORS = {
     btnVerTela: 'button[aria-label="Ver em tela"]'
 };
 
-async function isDropdownActive(page: Page, selector: string): Promise<boolean> {
-    return page.evaluate((sel) => {
-        const el = document.querySelector(sel);
-        if (!el) return false;
-        const dropdown = el.querySelector('.p-dropdown');
-        if (!dropdown) return false;
-        // Verifica se existe a classe p-disabled ou se está oculto
-        return !dropdown.classList.contains('p-disabled') && (dropdown as HTMLElement).offsetParent !== null;
-    }, selector);
-}
-
 async function doDownload(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
     const log = logger.forMethod('doDownload');
 
@@ -40,34 +35,48 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
     }, SELECTORS.btnDownload);
 
     if (isDownloadDisabled) {
+        const isVerTelaDisabled = await page.evaluate((sel) => {
+            const el = document.querySelector<HTMLButtonElement>(sel);
+            return !el || el.disabled || el.classList.contains('p-disabled');
+        }, SELECTORS.btnVerTela);
+
+        if (isVerTelaDisabled) {
+            log.warn(`[${filePrefix}] Ambos os botões (Download e Ver em tela) estão indisponíveis.`);
+            return;
+        }
+
         log.info(`[${filePrefix}] Botão de download bloqueado. Tentando via requisição (Ver em tela)...`);
 
-        const responsePromise = page.waitForResponse(response =>
-            response.url().includes('/financiamento/pagamento') && response.request().method() === 'GET',
-            { timeout: 60000 }
-        );
-
-        await page.click(SELECTORS.btnVerTela);
-
         try {
-            const response = await responsePromise;
-            const json = await response.json();
-
-            const filePath = path.join(downloadPath, `${filePrefix}.json`);
-            fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
-            log.info(`[${filePrefix}] Dados salvos em JSON com sucesso.`);
+            await safeDownloadJsonFromResponse(
+                page,
+                downloadPath,
+                filePrefix,
+                async () => {
+                    await realClick(page, SELECTORS.btnVerTela);
+                },
+                '/financiamento/pagamento',
+                { retries: 2, retryDelayMs: 3000 }
+            );
         } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
+            log.error({ data: formatError(error) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
         }
     } else {
         log.info(`[${filePrefix}] Botão de download habilitado. Realizando download do arquivo...`);
-        const filesBefore = getFilesInDir(downloadPath);
-        await page.click(SELECTORS.btnDownload);
+
         try {
-            await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix);
-            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso.`);
+            const savedPath = await triggerDownloadAndSave(page, {
+                downloadPath,
+                fileName: filePrefix,
+                trigger: () => realClick(page, SELECTORS.btnDownload),
+                startTimeout: 30000,
+                finishTimeout: 180000,
+                retries: 2,
+                retryDelayMs: 3000,
+            });
+            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso: ${path.basename(savedPath)}`);
         } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha no download do arquivo:`);
+            log.error({ data: formatError(error) }, `[${filePrefix}] Falha no download do arquivo:`);
         }
     }
 }
@@ -75,26 +84,31 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
 async function processAnoEParcelas(page: Page, downloadPath: string, prefix: string): Promise<void> {
     const numAnos = await getPrimeNgDropdownOptionsCount(page, SELECTORS.ano);
     for (let y = 0; y < numAnos; y++) {
-        await selectPrimeNgDropdownOption(page, SELECTORS.ano, y);
-        await new Promise(r => setTimeout(r, 1000)); // Aguarda carregamento das parcelas
+        await safeRunCombination(`${prefix}_ano-${y}`, async () => {
+            await selectPrimeNgDropdownOption(page, SELECTORS.ano, y);
+            await new Promise(r => setTimeout(r, 1000));
 
-        const numInicio = await getPrimeNgDropdownOptionsCount(page, SELECTORS.inicio);
-        for (let s = 0; s < numInicio; s++) {
-            await selectPrimeNgDropdownOption(page, SELECTORS.inicio, s);
-            await new Promise(r => setTimeout(r, 500));
-
-            if (await isDropdownActive(page, SELECTORS.fim)) {
-                const numFim = await getPrimeNgDropdownOptionsCount(page, SELECTORS.fim);
-                for (let f = 0; f < numFim; f++) {
-                    await selectPrimeNgDropdownOption(page, SELECTORS.fim, f);
+            const numInicio = await getPrimeNgDropdownOptionsCount(page, SELECTORS.inicio);
+            for (let s = 0; s < numInicio; s++) {
+                await safeRunCombination(`${prefix}_ano-${y}_ini-${s}`, async () => {
+                    await selectPrimeNgDropdownOption(page, SELECTORS.inicio, s);
                     await new Promise(r => setTimeout(r, 500));
 
-                    await doDownload(page, downloadPath, `${prefix}_ano-${y}_ini-${s}_fim-${f}`);
-                }
-            } else {
-                await doDownload(page, downloadPath, `${prefix}_ano-${y}_ini-${s}`);
+                    if (await isDropdownActive(page, SELECTORS.fim)) {
+                        const numFim = await getPrimeNgDropdownOptionsCount(page, SELECTORS.fim);
+                        for (let f = 0; f < numFim; f++) {
+                            await safeRunCombination(`${prefix}_ano-${y}_ini-${s}_fim-${f}`, async () => {
+                                await selectPrimeNgDropdownOption(page, SELECTORS.fim, f);
+                                await new Promise(r => setTimeout(r, 500));
+                                await doDownload(page, downloadPath, `${prefix}_ano-${y}_ini-${s}_fim-${f}`);
+                            });
+                        }
+                    } else {
+                        await doDownload(page, downloadPath, `${prefix}_ano-${y}_ini-${s}`);
+                    }
+                });
             }
-        }
+        });
     }
 }
 
@@ -113,30 +127,35 @@ export async function scrapePagamento(page: Page, moduleName: string, targetUrl:
     const numTipos = await getPrimeNgDropdownOptionsCount(page, SELECTORS.tipoUnidade);
 
     for (let i = 0; i < numTipos; i++) {
-        await selectPrimeNgDropdownOption(page, SELECTORS.tipoUnidade, i);
-        await new Promise(r => setTimeout(r, 1000)); // Aguarda requisições dependentes
+        await safeRunCombination(`tipo-${i}`, async () => {
+            await selectPrimeNgDropdownOption(page, SELECTORS.tipoUnidade, i);
+            await new Promise(r => setTimeout(r, 1000));
 
-        const numEstados = await getPrimeNgDropdownOptionsCount(page, SELECTORS.estado);
-        for (let j = 0; j < numEstados; j++) {
-            await selectPrimeNgDropdownOption(page, SELECTORS.estado, j);
-            await new Promise(r => setTimeout(r, 1500)); // Aguarda carregamento de municípios/parcelas
+            const numEstados = await getPrimeNgDropdownOptionsCount(page, SELECTORS.estado);
+            for (let j = 0; j < numEstados; j++) {
+                await safeRunCombination(`tipo-${i}_est-${j}`, async () => {
+                    await selectPrimeNgDropdownOption(page, SELECTORS.estado, j);
+                    await new Promise(r => setTimeout(r, 1500));
 
-            if (await isDropdownActive(page, SELECTORS.municipio)) {
-                const numMuns = await getPrimeNgDropdownOptionsCount(page, SELECTORS.municipio);
-                for (let k = 0; k < numMuns; k++) {
-                    await selectPrimeNgDropdownOption(page, SELECTORS.municipio, k);
-                    await new Promise(r => setTimeout(r, 1000));
-
-                    await processAnoEParcelas(page, downloadPath, `tipo-${i}_est-${j}_mun-${k}`);
-                }
-            } else {
-                await processAnoEParcelas(page, downloadPath, `tipo-${i}_est-${j}`);
+                    if (await isDropdownActive(page, SELECTORS.municipio)) {
+                        const numMuns = await getPrimeNgDropdownOptionsCount(page, SELECTORS.municipio);
+                        for (let k = 0; k < numMuns; k++) {
+                            await safeRunCombination(`tipo-${i}_est-${j}_mun-${k}`, async () => {
+                                await selectPrimeNgDropdownOption(page, SELECTORS.municipio, k);
+                                await new Promise(r => setTimeout(r, 1000));
+                                await processAnoEParcelas(page, downloadPath, `tipo-${i}_est-${j}_mun-${k}`);
+                            });
+                        }
+                    } else {
+                        await processAnoEParcelas(page, downloadPath, `tipo-${i}_est-${j}`);
+                    }
+                });
             }
-        }
+        });
     }
 
     log.info('Extraindo links de relatórios históricos...');
-    const historicoLinks = await page.$$eval('.relatorios-anteriores__lista a', (els) => 
+    const historicoLinks = await page.$$eval('.relatorios-anteriores__lista a', (els) =>
         els.map(a => (a as HTMLAnchorElement).href)
     );
 
@@ -145,6 +164,8 @@ export async function scrapePagamento(page: Page, moduleName: string, targetUrl:
         const histPage = await page.browser().newPage();
         try {
             await scrapePagamentoHistorico(histPage, historicoPath, link);
+        } catch (error) {
+            log.error({ data: formatError(error) }, `Erro ao extrair histórico de pagamento (${link}):`);
         } finally {
             await histPage.close();
         }

@@ -1,4 +1,5 @@
 // src/transformer.ts
+import { transformAcoesEProgramasAdesaoPse } from "./transformers/acoes-e-programas/acoesEProgramasAdesaoPseTransformer.js";
 import { transformCoberturaAcs } from "./transformers/cobertura-da-aps/coberturaAcsTransformer.js";
 import { transformCoberturaApsHistorico } from "./transformers/cobertura-da-aps/coberturaApsHistoricoTransformer.js";
 import { transformCoberturaAps } from "./transformers/cobertura-da-aps/coberturaApsTransformer.js";
@@ -29,4 +30,5 @@ import { transformGestaofederalPublicoRelatorioSolicitacoes } from "./transforme
 //await transformCoberturaAcs();
 //await transformMapasSus();
 //await transformRelHistoricoPagamentoEsf();
-await transformRelHistoricoPagamentoOutros();
+//await transformRelHistoricoPagamentoOutros();
+await transformAcoesEProgramasAdesaoPse();

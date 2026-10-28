@@ -1,10 +1,16 @@
 // src/scrapers/cobertura_saude_bucal_historico.ts
 import { Page } from "puppeteer";
 import * as path from "path";
-import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
-import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption } from "../primeng_helpers.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import { getPrimeNgDropdownOptionsCount, selectPrimeNgDropdownOption, isDropdownActive } from "../primeng_helpers.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeDownloadJsonFromResponse,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -36,16 +42,6 @@ const GEOGRAPHIC_DROPDOWNS = [
     { key: 'municipio', selector: SELECTORS.municipio }
 ];
 
-async function isDropdownActive(page: Page, selector: string): Promise<boolean> {
-    return page.evaluate((sel) => {
-        const el = document.querySelector(sel);
-        if (!el) return false;
-        const dropdown = el.querySelector('.p-dropdown');
-        if (!dropdown) return false;
-        return !dropdown.classList.contains('p-disabled') && (dropdown as HTMLElement).offsetParent !== null;
-    }, selector);
-}
-
 async function doDownload(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
     const log = logger.forMethod('doDownload');
 
@@ -67,32 +63,36 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
 
         log.info(`[${filePrefix}] Botão de download bloqueado. Tentando via requisição (Ver em tela)...`);
 
-        const responsePromise = page.waitForResponse(
-            response => response.url().includes('/cobertura/saude-bucal') && response.request().method() === 'GET',
-            { timeout: 60000 }
-        );
-
-        await page.click(SELECTORS.btnVerTela);
-
         try {
-            const response = await responsePromise;
-            const json = await response.json();
-
-            const filePath = path.join(downloadPath, `${filePrefix}.json`);
-            fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
-            log.info(`[${filePrefix}] Dados salvos em JSON com sucesso.`);
+            await safeDownloadJsonFromResponse(
+                page,
+                downloadPath,
+                filePrefix,
+                async () => {
+                    await realClick(page, SELECTORS.btnVerTela);
+                },
+                '/cobertura/saude-bucal',
+                { retries: 2, retryDelayMs: 3000 }
+            );
         } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
+            log.error({ data: formatError(error) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
         }
     } else {
         log.info(`[${filePrefix}] Botão de download habilitado. Realizando download do arquivo...`);
-        const filesBefore = getFilesInDir(downloadPath);
-        await page.click(SELECTORS.btnDownload);
+
         try {
-            await waitForNewDownloadAndRename(downloadPath, filesBefore, filePrefix);
-            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso.`);
+            const savedPath = await triggerDownloadAndSave(page, {
+                downloadPath,
+                fileName: filePrefix,
+                trigger: () => realClick(page, SELECTORS.btnDownload),
+                startTimeout: 30000,
+                finishTimeout: 180000,
+                retries: 2,
+                retryDelayMs: 3000,
+            });
+            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso: ${path.basename(savedPath)}`);
         } catch (error) {
-            log.error({ data: JSON.stringify(error, null, 4) }, `[${filePrefix}] Falha no download do arquivo:`);
+            log.error({ data: formatError(error) }, `[${filePrefix}] Falha no download do arquivo:`);
         }
     }
 }
@@ -101,19 +101,23 @@ async function processCompetencias(page: Page, downloadPath: string, prefix: str
     if (await isDropdownActive(page, SELECTORS.compInicio)) {
         const numInicio = await getPrimeNgDropdownOptionsCount(page, SELECTORS.compInicio);
         for (let i = 0; i < numInicio; i++) {
-            await selectPrimeNgDropdownOption(page, SELECTORS.compInicio, i);
-            await new Promise(r => setTimeout(r, 1000));
+            await safeRunCombination(`${prefix}_compIni-${i}`, async () => {
+                await selectPrimeNgDropdownOption(page, SELECTORS.compInicio, i);
+                await new Promise(r => setTimeout(r, 1000));
 
-            if (await isDropdownActive(page, SELECTORS.compFim)) {
-                const numFim = await getPrimeNgDropdownOptionsCount(page, SELECTORS.compFim);
-                for (let f = 0; f < numFim; f++) {
-                    await selectPrimeNgDropdownOption(page, SELECTORS.compFim, f);
-                    await new Promise(r => setTimeout(r, 500));
-                    await doDownload(page, downloadPath, `${prefix}_compIni-${i}_compFim-${f}`);
+                if (await isDropdownActive(page, SELECTORS.compFim)) {
+                    const numFim = await getPrimeNgDropdownOptionsCount(page, SELECTORS.compFim);
+                    for (let f = 0; f < numFim; f++) {
+                        await safeRunCombination(`${prefix}_compIni-${i}_compFim-${f}`, async () => {
+                            await selectPrimeNgDropdownOption(page, SELECTORS.compFim, f);
+                            await new Promise(r => setTimeout(r, 500));
+                            await doDownload(page, downloadPath, `${prefix}_compIni-${i}_compFim-${f}`);
+                        });
+                    }
+                } else {
+                    await doDownload(page, downloadPath, `${prefix}_compIni-${i}`);
                 }
-            } else {
-                await doDownload(page, downloadPath, `${prefix}_compIni-${i}`);
-            }
+            });
         }
     } else {
         await doDownload(page, downloadPath, prefix);
@@ -137,10 +141,12 @@ async function iterateGeographicDropdowns(
     if (await isDropdownActive(page, currentDropdown.selector)) {
         const count = await getPrimeNgDropdownOptionsCount(page, currentDropdown.selector);
         for (let i = 0; i < count; i++) {
-            await selectPrimeNgDropdownOption(page, currentDropdown.selector, i);
-            await new Promise(r => setTimeout(r, 1000));
             const nextPrefix = `${currentPrefix}_${currentDropdown.key}-${i}`;
-            await iterateGeographicDropdowns(page, dropdowns, currentIndex + 1, downloadPath, nextPrefix);
+            await safeRunCombination(nextPrefix, async () => {
+                await selectPrimeNgDropdownOption(page, currentDropdown.selector, i);
+                await new Promise(r => setTimeout(r, 1000));
+                await iterateGeographicDropdowns(page, dropdowns, currentIndex + 1, downloadPath, nextPrefix);
+            });
         }
     } else {
         await iterateGeographicDropdowns(page, dropdowns, currentIndex + 1, downloadPath, currentPrefix);

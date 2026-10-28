@@ -1,8 +1,13 @@
 // src/scrapers/pagamento-historico.ts
 import { Page } from "puppeteer";
-import * as path from "path";
 import { new_logger } from "../services/logs.js";
-import { setupDownloadBehavior, getFilesInDir, waitForNewDownloadAndRename } from "../downloader.js";
+import {
+    setupDownloadBehavior,
+    triggerDownloadAndSave,
+    realClick,
+    formatError,
+    safeRunCombination
+} from "../downloader.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -14,7 +19,7 @@ const SELECTORS = [
     'select[name$=":compFim"]'
 ];
 
-async function doHistoricalDownload(page: Page, downloadPath: string, prefix: string) {
+async function doHistoricalDownload(page: Page, downloadPath: string, prefix: string): Promise<void> {
     const log = logger.forMethod('doHistoricalDownload');
     const btnSelector = 'input[type="submit"][id*="Download"]';
 
@@ -28,23 +33,31 @@ async function doHistoricalDownload(page: Page, downloadPath: string, prefix: st
         return;
     }
 
-    const filesBefore = getFilesInDir(downloadPath);
-
     log.info(`[${prefix}] Iniciando download histórico...`);
-    await page.evaluate((sel) => {
-        document.querySelector<HTMLInputElement>(sel)?.click();
-    }, btnSelector);
 
     try {
-        // Aguarda até 2 minutos, relatórios agregados podem demorar
-        await waitForNewDownloadAndRename(downloadPath, filesBefore, prefix, 120000);
-        log.info(`[${prefix}] Download histórico concluído com sucesso.`);
+        const savedPath = await triggerDownloadAndSave(page, {
+            downloadPath,
+            fileName: prefix,
+            trigger: () => realClick(page, btnSelector),
+            startTimeout: 30000,
+            finishTimeout: 180000,
+            retries: 2,
+            retryDelayMs: 3000,
+        });
+        log.info(`[${prefix}] Download histórico concluído com sucesso: ${savedPath}`);
     } catch (error) {
-        log.error({ data: JSON.stringify(error, null, 4) }, `[${prefix}] Falha no download histórico:`);
+        log.error({ data: formatError(error) }, `[${prefix}] Falha no download histórico:`);
     }
 }
 
-async function processField(page: Page, fields: string[], currentIndex: number, currentPrefix: string, downloadPath: string) {
+async function processField(
+    page: Page,
+    fields: string[],
+    currentIndex: number,
+    currentPrefix: string,
+    downloadPath: string
+): Promise<void> {
     const log = logger.forMethod('processField');
 
     if (currentIndex >= fields.length) {
@@ -54,7 +67,6 @@ async function processField(page: Page, fields: string[], currentIndex: number, 
 
     const fieldSelector = fields[currentIndex];
 
-    // Select2 oculta o select nativo (offsetParent === null), então checamos apenas existência e estado disabled
     const isAvailable = await page.evaluate((sel) => {
         const el = document.querySelector<HTMLSelectElement>(sel);
         return el && !el.disabled;
@@ -67,37 +79,35 @@ async function processField(page: Page, fields: string[], currentIndex: number, 
 
     const options = await page.evaluate((sel) => {
         const el = document.querySelector<HTMLSelectElement>(sel);
-        return Array.from(el!.options)
+        return Array.from(el?.options || [])
             .map(o => o.value)
-            .filter(v => v !== '' && v !== '99'); // Remove placeholders vazios e "99" (Selecione...)
+            .filter(v => v !== '' && v !== '99');
     }, fieldSelector);
 
     if (options.length === 0) {
-        log.warn(`[${currentPrefix}] Campo (${fieldSelector}) sem opções válidas disponíveis. Ramificação interrompida.`);
+        log.warn(`[${currentPrefix}] Campo (${fieldSelector}) sem opções válidas disponíveis.`);
         return;
     }
 
     for (const opt of options) {
-        await page.evaluate((sel, val) => {
-            const jq = (window as any).$;
-            if (jq && jq(sel).length) {
-                // Via jQuery p/ Select2 (Garante os bindings do JSF)
-                jq(sel).val(val).trigger('change');
-            } else {
-                // Fallback nativo
-                const el = document.querySelector<HTMLSelectElement>(sel);
-                if (el) {
-                    el.value = val;
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            }
-        }, fieldSelector, opt);
-
-        // Aguarda ciclo de atualização AJAX do JSF
-        await new Promise(r => setTimeout(r, 1500));
-
         const nextPrefix = currentPrefix ? `${currentPrefix}_${opt}` : opt;
-        await processField(page, fields, currentIndex + 1, nextPrefix, downloadPath);
+        await safeRunCombination(nextPrefix, async () => {
+            await page.evaluate((sel, val) => {
+                const jq = (window as any).$;
+                if (jq && jq(sel).length) {
+                    jq(sel).val(val).trigger('change');
+                } else {
+                    const el = document.querySelector<HTMLSelectElement>(sel);
+                    if (el) {
+                        el.value = val;
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }, fieldSelector, opt);
+
+            await new Promise(r => setTimeout(r, 1500));
+            await processField(page, fields, currentIndex + 1, nextPrefix, downloadPath);
+        });
     }
 }
 
@@ -109,7 +119,6 @@ export async function scrapePagamentoHistorico(page: Page, downloadPath: string,
     log.info(`Navegando para histórico: ${targetUrl}`);
     await page.goto(targetUrl, { waitUntil: 'networkidle2' });
 
-    // Isola o nome da página (ex: relFinanciamentoParcela) para usar como prefixo
     const urlObj = new URL(targetUrl);
     const reportName = urlObj.pathname.split('/').pop()?.replace('.xhtml', '') || 'historico';
 

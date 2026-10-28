@@ -487,3 +487,32 @@ export const relHistoricoPagamentoOutros = mysqlTable(
   }
 );
 
+export const acoesEProgramasAdesaoPse = mysqlTable(
+  "acoes_e_programas_adesao_pse",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf"),
+    municipio: text("municipio"),
+    ibge: text("ibge"),
+    ciclo: text("ciclo"),
+    tipoDeLocalizacao: text("tipo_de_localizacao"),
+    localizacaoDiferenciada: text("localizacao_diferenciada"),
+    esferaAdministrativa: text("esfera_administrativa"),
+    inep: text("inep"),
+    nomeDaEscola: text("nome_da_escola"),
+    quantidadeEducandos: text("quantidade_educandos"),
+    quantidadeCreche: text("quantidade_creche"),
+    quantidadePreEscola: text("quantidade_pre_escola"),
+    quantidadeFundamental: text("quantidade_fundamental"),
+    quantidadeMedio: text("quantidade_medio"),
+    quantidadeProfissional: text("quantidade_profissional"),
+    quantidadeEja: text("quantidade_eja"),
+    situacaoAdesao: text("situacao_adesao"),
+    parteDoGrupoPrioritario: text("parte_do_grupo_prioritario"),
+    possuiMaisDe50DosEducandosNoBfa: text("possui_mais_de_50_dos_educandos_no_bfa"),
+    participaDoSistemaNacionalDeAcompanhamentoDeMedidasSocioeducativas: text("part_sis_nac_acomp_medidas_socioeducativas"),
+    participouDoNutrisus: text("participou_do_nutrisus"),
+    aderiuAoProgramaDeObesidade: text("aderiu_ao_programa_de_obesidade"),
+  }
+);
+

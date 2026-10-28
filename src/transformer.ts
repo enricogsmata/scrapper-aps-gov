@@ -1,4 +1,6 @@
 // src/transformer.ts
+import { new_logger } from "./services/logs.js";
+import { formatError } from "./downloader.js";
 import { transformAcoesEProgramasAdesaoPse } from "./transformers/acoes-e-programas/acoesEProgramasAdesaoPseTransformer.js";
 import { transformAcoesEProgramasDescontinuadosAdesaoSaudeHora } from "./transformers/acoes-e-programas/acoesEProgramasDescontinuadosAdesaoSaudeHoraTransformer.js";
 import { transformAcoesEProgramasDescontinuadosInformatizaAps } from "./transformers/acoes-e-programas/acoesEProgramasDescontinuadosInformatizaApsTransformer.js";
@@ -32,35 +34,73 @@ import { transformSiapsPublicoPraticasAssistenciaisTab3 } from "./transformers/s
 import { transformSiapsPublicoPraticasAssistenciaisTab4 } from "./transformers/siaps/siapsPublicoPraticasAssistenciaisTab4Transformer.js";
 import { transformSiapsPublico } from "./transformers/siaps/siapsPublicoTransformer.js";
 
-//await transformGerenciaapsAusenciaEnvioProducao();
-//await transformGerenciaapsPagamento();
-//await transformGerenciaapsPagamentoHistorico();
-//await transformGerenciaapsInesCnesHomologados();
-//await transformGestaofederalPublicoRelatorioSolicitacoes();
-//await transformGerenciaapsSolicitacoesAdesao();
-//await transformGerenciaapsOutrosIncentivos();
-//await transformCoberturaAps();
-//await transformCoberturaApsHistorico();
-//await transformCoberturaSaudeBucalV2();
-//await transformCoberturaSaudeBucalV2Historico();
-//await transformCoberturaAcs();
-//await transformMapasSus();
-//await transformRelHistoricoPagamentoEsf();
-//await transformRelHistoricoPagamentoOutros();
-//await transformAcoesEProgramasAdesaoPse();
-//await transformAcoesEProgramasHomologacaoSaudeComAgente();
-//await transformSisabValidacao();
-//await transformAcoesEProgramasIndicadorPainel();
-//await transformAcoesEProgramasIndicadorCadastro();
-//await transformAcoesEProgramasSaudeProducao();
-//await transformAcoesEProgramasIndicadorPrenatal();
-//await transformAcoesEProgramasSaudeAtividadeColetiva();
-//await transformAcoesEProgramasDescontinuadosInformatizaAps();
-//await transformAcoesEProgramasRelpagamentopmaq();
-//await transformAcoesEProgramasDescontinuadosAdesaoSaudeHora();
-//await transformSiapsPublico();
-//await transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais();
-//await transformSiapsPublicoPraticasAssistenciaisTab1();
-//await transformSiapsPublicoPraticasAssistenciaisTab2();
-//await transformSiapsPublicoPraticasAssistenciaisTab3();
-await transformSiapsPublicoPraticasAssistenciaisTab4();
+const logger = new_logger(import.meta.url);
+
+interface TransformTask {
+    name: string;
+    execute: () => Promise<unknown>;
+}
+
+const TRANSFORM_TASKS: readonly TransformTask[] = [
+    { name: "GerenciaapsAusenciaEnvioProducao", execute: transformGerenciaapsAusenciaEnvioProducao },
+    { name: "GerenciaapsPagamento", execute: transformGerenciaapsPagamento },
+    { name: "GerenciaapsPagamentoHistorico", execute: transformGerenciaapsPagamentoHistorico },
+    { name: "GerenciaapsInesCnesHomologados", execute: transformGerenciaapsInesCnesHomologados },
+    { name: "GestaofederalPublicoRelatorioSolicitacoes", execute: transformGestaofederalPublicoRelatorioSolicitacoes },
+    { name: "GerenciaapsSolicitacoesAdesao", execute: transformGerenciaapsSolicitacoesAdesao },
+    { name: "GerenciaapsOutrosIncentivos", execute: transformGerenciaapsOutrosIncentivos },
+    { name: "CoberturaAps", execute: transformCoberturaAps },
+    { name: "CoberturaApsHistorico", execute: transformCoberturaApsHistorico },
+    { name: "CoberturaSaudeBucalV2", execute: transformCoberturaSaudeBucalV2 },
+    { name: "CoberturaSaudeBucalV2Historico", execute: transformCoberturaSaudeBucalV2Historico },
+    { name: "CoberturaAcs", execute: transformCoberturaAcs },
+    { name: "MapasSus", execute: transformMapasSus },
+    { name: "RelHistoricoPagamentoEsf", execute: transformRelHistoricoPagamentoEsf },
+    { name: "RelHistoricoPagamentoOutros", execute: transformRelHistoricoPagamentoOutros },
+    { name: "AcoesEProgramasAdesaoPse", execute: transformAcoesEProgramasAdesaoPse },
+    { name: "AcoesEProgramasHomologacaoSaudeComAgente", execute: transformAcoesEProgramasHomologacaoSaudeComAgente },
+    { name: "SisabValidacao", execute: transformSisabValidacao },
+    { name: "AcoesEProgramasIndicadorPainel", execute: transformAcoesEProgramasIndicadorPainel },
+    { name: "AcoesEProgramasIndicadorCadastro", execute: transformAcoesEProgramasIndicadorCadastro },
+    { name: "AcoesEProgramasSaudeProducao", execute: transformAcoesEProgramasSaudeProducao },
+    { name: "AcoesEProgramasIndicadorPrenatal", execute: transformAcoesEProgramasIndicadorPrenatal },
+    { name: "AcoesEProgramasSaudeAtividadeColetiva", execute: transformAcoesEProgramasSaudeAtividadeColetiva },
+    { name: "AcoesEProgramasDescontinuadosInformatizaAps", execute: transformAcoesEProgramasDescontinuadosInformatizaAps },
+    { name: "AcoesEProgramasRelpagamentopmaq", execute: transformAcoesEProgramasRelpagamentopmaq },
+    { name: "AcoesEProgramasDescontinuadosAdesaoSaudeHora", execute: transformAcoesEProgramasDescontinuadosAdesaoSaudeHora },
+    { name: "SiapsPublico", execute: transformSiapsPublico },
+    { name: "SiapsPublicoPraticasAssistenciaisAtendimentosIndividuais", execute: transformSiapsPublicoPraticasAssistenciaisAtendimentosIndividuais },
+    { name: "SiapsPublicoPraticasAssistenciaisTab1", execute: transformSiapsPublicoPraticasAssistenciaisTab1 },
+    { name: "SiapsPublicoPraticasAssistenciaisTab2", execute: transformSiapsPublicoPraticasAssistenciaisTab2 },
+    { name: "SiapsPublicoPraticasAssistenciaisTab3", execute: transformSiapsPublicoPraticasAssistenciaisTab3 },
+    { name: "SiapsPublicoPraticasAssistenciaisTab4", execute: transformSiapsPublicoPraticasAssistenciaisTab4 },
+];
+
+export async function runTransformers(): Promise<void> {
+    const log = logger.forMethod("runTransformers");
+    log.info(`Iniciando execução de ${TRANSFORM_TASKS.length} transformers...`);
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const [index, { name, execute }] of TRANSFORM_TASKS.entries()) {
+        const step = `[${index + 1}/${TRANSFORM_TASKS.length}]`;
+        log.info(`${step} Iniciando transformer: ${name}`);
+
+        try {
+            await execute();
+            successCount++;
+            log.info(`${step} Finalizado com sucesso: ${name}`);
+        } catch (error) {
+            failureCount++;
+            log.error(
+                { data: formatError(error) },
+                `${step} Falha ao executar transformer: ${name}. Continuando para os próximos...`
+            );
+        }
+    }
+
+    log.info(
+        `Processo de transformação concluído! Sucessos: ${successCount}, Falhas: ${failureCount}, Total: ${TRANSFORM_TASKS.length}`
+    );
+}

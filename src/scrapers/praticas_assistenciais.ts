@@ -1,6 +1,7 @@
 // src/scrapers/praticas_assistenciais.ts
-import { Page } from "puppeteer";
+import { Page, HTTPResponse } from "puppeteer";
 import * as path from "path";
+import * as fs from "fs";
 import { new_logger } from "../services/logs.js";
 import {
     setupDownloadBehavior,
@@ -102,11 +103,64 @@ async function configureCompetenciasPorAno(page: Page, yearIndex: number): Promi
 }
 
 async function selectPrimeNgOptionByIndex(page: Page, dropdownContainerSelector: string, index: number): Promise<string> {
-    await page.waitForSelector(dropdownContainerSelector, { visible: true });
-    await page.click(`${dropdownContainerSelector} .p-dropdown-trigger, ${dropdownContainerSelector} .p-dropdown`);
+    const loaderSelectors = [
+        'app-loading .carregando',
+        '.p-progress-spinner',
+        '.p-blockui',
+        '.loading-overlay',
+        '.ngx-spinner-overlay',
+        '.status-processando'
+    ];
+    for (const sel of loaderSelectors) {
+        await page.waitForFunction(
+            (s) => {
+                const el = document.querySelector(s);
+                return !el || (el as HTMLElement).offsetParent === null;
+            },
+            { timeout: 120000 },
+            sel
+        ).catch(() => { });
+    }
+
+    await page.waitForFunction(
+        (sel) => {
+            const dropdown = document.querySelector(`${sel} .p-dropdown`) || document.querySelector(sel);
+            return dropdown && !dropdown.classList.contains('p-disabled') && !dropdown.hasAttribute('disabled');
+        },
+        { timeout: 30000 },
+        dropdownContainerSelector
+    ).catch(() => { });
+
+    await page.waitForSelector(dropdownContainerSelector, { visible: true, timeout: 15000 });
+    await page.evaluate((sel) => {
+        document.querySelector<HTMLElement>(sel)?.scrollIntoView({ behavior: 'instant', block: 'center' });
+    }, dropdownContainerSelector);
+    await new Promise((r) => setTimeout(r, 400));
 
     const panelSelector = 'div.painel-dimensao-praticas.p-dropdown-panel, .p-overlay .p-dropdown-panel, .p-dropdown-panel';
-    await page.waitForSelector(panelSelector, { visible: true, timeout: 15000 });
+
+    let opened = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await page.evaluate((sel) => {
+            const trigger = document.querySelector<HTMLElement>(`${sel} .p-dropdown-trigger`) ||
+                document.querySelector<HTMLElement>(`${sel} .p-dropdown`) ||
+                document.querySelector<HTMLElement>(sel);
+            trigger?.click();
+        }, dropdownContainerSelector);
+
+        try {
+            await page.waitForSelector(panelSelector, { visible: true, timeout: 5000 });
+            opened = true;
+            break;
+        } catch {
+            await page.keyboard.press('Escape').catch(() => { });
+            await new Promise((r) => setTimeout(r, 1000));
+        }
+    }
+
+    if (!opened) {
+        throw new Error(`Não foi possível abrir o dropdown: ${dropdownContainerSelector}`);
+    }
 
     const selectedText = await page.evaluate((panelSel, itemIdx) => {
         const panels = Array.from(document.querySelectorAll<HTMLElement>(panelSel));
@@ -129,6 +183,7 @@ async function selectPrimeNgOptionByIndex(page: Page, dropdownContainerSelector:
         panelSelector
     ).catch(() => { });
 
+    await new Promise((r) => setTimeout(r, 500));
     return selectedText;
 }
 
@@ -186,8 +241,8 @@ async function doDownloadCsv(page: Page, downloadPath: string, filePrefix: strin
                     }
                 }, overlayOptionSelector);
             },
-            startTimeout: 30000,
-            finishTimeout: 180000,
+            startTimeout: 60000,
+            finishTimeout: 360000,
             retries: 2,
             retryDelayMs: 3000,
         });
@@ -213,7 +268,7 @@ export async function scrapePraticasAssistenciais(page: Page, moduleName: string
 
     const totalTabs = await page.$$eval('p-tabview ul.p-tabview-nav li[role="presentation"] a', (els) => els.length);
 
-    for (let t = 0; t < totalTabs; t++) {
+    for (let t = 4; t < totalTabs; t++) {
         const tabLinks = await page.$$('p-tabview ul.p-tabview-nav li[role="presentation"] a');
         await realClick(page, tabLinks[t]);
 
@@ -276,21 +331,89 @@ export async function scrapePraticasAssistenciais(page: Page, moduleName: string
                                         log.info(`[${tabInfo.slug}] Consulta: [${paramLabel}] | Ano [${yearLabel}] | Linha [${linhaLabel}] | Coluna [${colunaLabel}]`);
 
                                         const btnRealizarConsultaSel = 'div.p-tabview-panel:not([hidden]) botao-realizar-consulta button.br-button.primary';
-                                        await page.waitForSelector(btnRealizarConsultaSel, { visible: true });
-                                        await realClick(page, btnRealizarConsultaSel);
 
-                                        const btnDownloadSel = 'div.p-tabview-panel:not([hidden]) download-button button.br-button';
-                                        await page.waitForFunction(
-                                            (btnSel) => {
-                                                const btn = document.querySelector<HTMLButtonElement>(btnSel);
-                                                return btn && !btn.disabled;
+                                        const isConsultaEnabled = await page.waitForFunction(
+                                            (sel) => {
+                                                const btn = document.querySelector<HTMLButtonElement>(sel);
+                                                return btn && !btn.disabled && !btn.classList.contains('disabled');
                                             },
-                                            { timeout: 180000 },
-                                            btnDownloadSel
-                                        );
+                                            { timeout: 10000 },
+                                            btnRealizarConsultaSel
+                                        ).then(() => true).catch(() => false);
+
+                                        if (!isConsultaEnabled) {
+                                            log.warn(`[${tabInfo.slug}] Botão "Realizar Consulta" desabilitado para ${paramLabel} | Linha: ${linhaLabel} | Coluna: ${colunaLabel}. Pulando.`);
+                                            return;
+                                        }
 
                                         const filePrefix = `${tabInfo.slug}_${paramLabel}_ano-${yearLabel}_l-${l}_c-${c}`;
-                                        await doDownloadCsv(page, tabDownloadPath, filePrefix);
+                                        let jsonPayload: any = null;
+
+                                        const captureResponse = async (res: HTTPResponse) => {
+                                            if (res.url().includes('praticas-assistenciais/consulta') && res.request().method() === 'POST') {
+                                                try { jsonPayload = await res.json(); } catch { }
+                                            }
+                                        };
+                                        page.on('response', captureResponse);
+
+                                        await realClick(page, btnRealizarConsultaSel);
+                                        await new Promise((r) => setTimeout(r, 1000));
+
+                                        const btnDownloadSel = 'div.p-tabview-panel:not([hidden]) download-button button.br-button';
+
+                                        try {
+                                            const consultResult = await page.waitForFunction(
+                                                (btnSel) => {
+                                                    const toastEls = Array.from(document.querySelectorAll(
+                                                        '.p-toast-message, .p-message, .alert, .ui-messages, .message-error, .toast-body'
+                                                    ));
+                                                    const text = toastEls.map((el) => el.textContent || '').join(' ').toLowerCase();
+                                                    if (/nenhum registro|não foram encontrados|sem dados|nenhum dado|dados não encontrados|não há dados/.test(text)) {
+                                                        return 'NO_DATA';
+                                                    }
+                                                    if (/erro interno|falha na consulta|ocorreu um erro|exception/.test(text)) {
+                                                        return 'ERROR';
+                                                    }
+
+                                                    const btn = document.querySelector<HTMLButtonElement>(btnSel);
+                                                    if (btn && !btn.disabled && !btn.classList.contains('disabled')) {
+                                                        return 'SUCCESS';
+                                                    }
+                                                    return false;
+                                                },
+                                                { timeout: 60000, polling: 1000 },
+                                                btnDownloadSel
+                                            );
+
+                                            const status = await consultResult.jsonValue();
+                                            if (status === 'NO_DATA') {
+                                                throw new Error(`[NO_DATA] Sem dados para ${paramLabel} | Ano: ${yearLabel} | Linha: ${linhaLabel} | Coluna: ${colunaLabel}`);
+                                            }
+                                            if (status === 'ERROR') {
+                                                throw new Error(`Erro retornado pelo portal para ${paramLabel} | Ano: ${yearLabel} | Linha: ${linhaLabel} | Coluna: ${colunaLabel}`);
+                                            }
+
+                                            await doDownloadCsv(page, tabDownloadPath, filePrefix);
+
+                                            const expectedCsvPath = path.join(tabDownloadPath, `${filePrefix}.csv`);
+                                            if (!fs.existsSync(expectedCsvPath)) {
+                                                throw new Error(`Falha no download CSV. Arquivo não encontrado.`);
+                                            }
+                                        } catch (err: any) {
+                                            if (err.message && err.message.includes('[NO_DATA]')) {
+                                                throw err;
+                                            }
+
+                                            if (jsonPayload) {
+                                                log.warn(`[${filePrefix}] Falha na interface/download. Ativando fallback: salvando JSON interceptado.`);
+                                                const jsonPath = path.join(tabDownloadPath, `${filePrefix}.json`);
+                                                fs.writeFileSync(jsonPath, JSON.stringify(jsonPayload, null, 2));
+                                            } else {
+                                                throw err;
+                                            }
+                                        } finally {
+                                            page.off('response', captureResponse);
+                                        }
                                     });
                                 }
                             });

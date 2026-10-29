@@ -31,13 +31,6 @@ export const Logs = mysqlTable("logs", {
 // 2. DIMENSÕES GEOGRÁFICAS E ADMINISTRATIVAS
 // ==========================================
 
-export const estados = mysqlTable("estados", {
-  sigla: char("sigla", { length: 2 }).primaryKey(),
-  codigoIbge: varchar("codigo_ibge", { length: 2 }).notNull().unique(),
-  nome: varchar("nome", { length: 50 }).notNull(),
-  regiao: varchar("regiao", { length: 20 }),
-});
-
 export const regioesSaude = mysqlTable(
   "regioes_saude",
   {
@@ -54,6 +47,13 @@ export const regioesSaude = mysqlTable(
     }),
   ]
 );
+
+export const estados = mysqlTable("estados", {
+  sigla: char("sigla", { length: 2 }).primaryKey(),
+  codigoIbge: varchar("codigo_ibge", { length: 2 }).notNull().unique(),
+  nome: varchar("nome", { length: 50 }).notNull(),
+  regiao: varchar("regiao", { length: 20 }),
+});
 
 export const municipios = mysqlTable(
   "municipios",

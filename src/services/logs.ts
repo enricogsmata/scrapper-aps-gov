@@ -36,7 +36,7 @@ const db_stream = new Writable({
 
             callback();
         } catch (error: any) {
-            console.error(`Falha ao inserir log no banco de dados\nData Length: ${chunk.toString().data.length ?? 0}\nErro: ${JSON.stringify(error, null, 4)}`);
+            console.error(`Falha ao inserir log no banco de dados\nData Length: ${chunk.length ?? 0}\nErro: ${JSON.stringify(error, null, 4)}`);
             callback(error as Error);
         }
     }

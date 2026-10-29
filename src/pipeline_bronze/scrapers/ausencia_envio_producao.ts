@@ -52,9 +52,9 @@ export async function scrapeAusenciaEnvioProducao(page: Page, moduleName: string
                     fileName: safeName,
                     trigger: () => realClick(page, downloadBtnSelector),
                     startTimeout: 30000,
-                    finishTimeout: 120000,
+                    finishTimeout: 180000,
                     retries: 2,
-                    retryDelayMs: 3000,
+                    retryDelayMs: 15000,
                 });
                 log.info(`[${safeName}] Download concluído com sucesso: ${savedPath}`);
             } else {

@@ -1,4 +1,4 @@
-// src/transformers/seed_estados.ts
+// src\pipeline_silver\transformers\seed_estados.ts
 import { sql } from "drizzle-orm";
 import { db } from "../../database/db/connection.js";
 import { estados } from "../../database/db/schema.js";

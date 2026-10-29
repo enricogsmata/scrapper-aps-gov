@@ -2,9 +2,9 @@
 import { sql } from "drizzle-orm";
 import { db } from "../../database/db/connection.js";
 import { raw_db } from "../../database/raw_db/connection.js";
-import { 
-  municipios, 
-  gerenciaapsPagamentosHistorico 
+import {
+  municipios,
+  gerenciaapsPagamentosHistorico
 } from "../../database/db/schema.js";
 import { gerenciaapsPagamentoHistorico } from "../../database/raw_db/schema.js";
 import { new_logger } from "../../services/logs.js";
@@ -19,8 +19,11 @@ function parseIntSafe(val: string | null): number | undefined {
 
 function parseDecimalSafe(val: string | null): string | undefined {
   if (!val) return undefined;
-  const cleaned = val.replace(/[R$\s]/g, "").replace(/\./g, "").replace(",", ".");
-  const parsed = parseFloat(cleaned);
+  const cleaned = val.replace(/[R$%\s]/g, "").trim();
+  const normalized = cleaned.includes(",")
+    ? cleaned.replace(/\./g, "").replace(",", ".")
+    : cleaned;
+  const parsed = parseFloat(normalized);
   return isNaN(parsed) ? undefined : parsed.toString();
 }
 

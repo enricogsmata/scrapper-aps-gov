@@ -15,7 +15,11 @@ function parseIntSafe(val: string | null): number | undefined {
 
 function parseDecimalSafe(val: string | null): string | undefined {
   if (!val) return undefined;
-  const parsed = parseFloat(val.replace(/\./g, "").replace(",", "."));
+  const cleaned = val.replace(/[R$%\s]/g, "").trim();
+  const normalized = cleaned.includes(",")
+    ? cleaned.replace(/\./g, "").replace(",", ".")
+    : cleaned;
+  const parsed = parseFloat(normalized);
   return isNaN(parsed) ? undefined : parsed.toString();
 }
 

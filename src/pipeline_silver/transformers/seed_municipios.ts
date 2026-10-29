@@ -9,24 +9,42 @@ const logger = new_logger(import.meta.url);
 interface IbgeMunicipioResponse {
   id: number;
   nome: string;
-  microrregiao: {
+  microrregiao?: {
     id: number;
     nome: string;
-    mesorregiao: {
+    mesorregiao?: {
       id: number;
       nome: string;
-      UF: {
+      UF?: {
         id: number;
         sigla: string;
         nome: string;
-        regiao: {
+        regiao?: {
           id: number;
           sigla: string;
           nome: string;
         };
       };
     };
-  };
+  } | null;
+  "regiao-imediata"?: {
+    id: number;
+    nome: string;
+    "regiao-intermediaria"?: {
+      id: number;
+      nome: string;
+      UF?: {
+        id: number;
+        sigla: string;
+        nome: string;
+        regiao?: {
+          id: number;
+          sigla: string;
+          nome: string;
+        };
+      };
+    };
+  } | null;
 }
 
 export async function seedMunicipios(): Promise<void> {
@@ -36,7 +54,7 @@ export async function seedMunicipios(): Promise<void> {
     log.info({ data: [] }, "Iniciando busca de municípios na API do IBGE");
 
     const response = await fetch("https://servicodados.ibge.gov.br/api/v1/localidades/municipios");
-    
+
     if (!response.ok) {
       throw new Error(`Erro na API do IBGE: ${response.statusText}`);
     }
@@ -45,13 +63,17 @@ export async function seedMunicipios(): Promise<void> {
 
     const values = data.map((municipio) => {
       const codigoIbgeStr = municipio.id.toString();
-      
+      const ufSigla =
+        municipio.microrregiao?.mesorregiao?.UF?.sigla ??
+        municipio["regiao-imediata"]?.["regiao-intermediaria"]?.UF?.sigla ??
+        "";
+
       return {
         codigoIbge: codigoIbgeStr,
         codigoIbge6: codigoIbgeStr.substring(0, 6),
         nome: municipio.nome,
-        ufSigla: municipio.microrregiao.mesorregiao.UF.sigla,
-        codigoMicrorregiao: municipio.microrregiao.id.toString(),
+        ufSigla,
+        codigoMicrorregiao: municipio.microrregiao?.id ? municipio.microrregiao.id.toString() : null,
       };
     });
 
@@ -61,7 +83,7 @@ export async function seedMunicipios(): Promise<void> {
       const chunkSize = 1000;
       for (let i = 0; i < values.length; i += chunkSize) {
         const chunk = values.slice(i, i + chunkSize);
-        
+
         await db.insert(municipios)
           .values(chunk)
           .onDuplicateKeyUpdate({

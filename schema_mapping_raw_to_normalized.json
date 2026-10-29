@@ -1,0 +1,1374 @@
+{
+  "descricao": "Mapeamento entre o schema raw (raw_db/schema.ts) e o schema normalizado em 1FN, 2FN e 3FN (db/schema.ts)",
+  "versao": "1.0.0",
+  "mapeamentos": [
+    {
+      "tabela_origem": "gerenciaaps_ausencia_envio_producao",
+      "descricao": "Registros de ausência de envio de produção dos estabelecimentos de saúde",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": {
+            "uf": "sigla"
+          }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "estabelecimentos_saude",
+          "tipo": "dimensao",
+          "colunas": {
+            "cnes": "codigo_cnes",
+            "ibge": "municipio_ibge",
+            "tipo_de_estabelecimento": "tipo_estabelecimento"
+          }
+        },
+        {
+          "tabela": "gerenciaaps_ausencias_envio_producao",
+          "tipo": "fato",
+          "fk_constraints": ["fk_gap_aus_mun", "fk_gap_aus_cnes"],
+          "colunas": {
+            "comp_cnes": "comp_cnes",
+            "ibge": "municipio_ibge",
+            "cnes": "codigo_cnes",
+            "gestao": "gestao",
+            "situacao_do_envio_de_producao": "situacao_envio_producao"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gerenciaaps_pagamento",
+      "descricao": "Pagamentos mensais federais da APS discriminados por processo e plano orçamentário",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": {
+            "sg_uf": "sigla",
+            "co_uf_ibge": "codigo_ibge"
+          }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "co_municipio_ibge": "codigo_ibge",
+            "no_municipio": "nome",
+            "sg_uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "planos_orcamentarios",
+          "tipo": "dimensao",
+          "colunas": {
+            "co_seq_plano_orcamentario": "codigo_seq",
+            "ds_plano_orcamentario": "descricao"
+          }
+        },
+        {
+          "tabela": "gerenciaaps_pagamentos",
+          "tipo": "fato",
+          "fk_constraints": ["fk_gap_pag_uf", "fk_gap_pag_mun", "fk_gap_pag_plan"],
+          "colunas": {
+            "data": "data_pagamento",
+            "sg_uf": "uf_sigla",
+            "co_municipio_ibge": "municipio_ibge",
+            "nu_comp_cnes": "comp_cnes",
+            "nu_parcela": "parcela",
+            "co_processo": "codigo_processo",
+            "co_seq_plano_orcamentario": "plano_orcamentario_seq",
+            "ds_gestao": "gestao",
+            "total": "total",
+            "vl_total_custeio": "vl_total_custeio",
+            "vl_total_implantacao": "vl_total_implantacao",
+            "valor_integral": "valor_integral",
+            "ajuste": "ajuste",
+            "desconto": "desconto",
+            "valor_efetivo_repasse": "valor_efetivo_repasse",
+            "valor_implantacao": "valor_implantacao",
+            "ajuste_implantacao": "ajuste_implantacao",
+            "desconto_implantacao": "desconto_implantacao"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gerenciaaps_pagamento_historico",
+      "descricao": "Histórico detalhado do financiamento e cálculo do Previne Brasil / APS por município",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": {
+            "uf": "sigla"
+          }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla",
+            "tipologia": "tipologia",
+            "populacao": "populacao"
+          }
+        },
+        {
+          "tabela": "gerenciaaps_pagamentos_historico",
+          "tipo": "fato",
+          "fk_constraints": ["fk_gap_pgh_mun"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "comp_cnes": "comp_cnes",
+            "parcela": "parcela",
+            "populacao": "populacao",
+            "credenciadas_esf": "credenciadas_esf",
+            "credenciadas_eap": "credenciadas_eap",
+            "homologadas_esf": "homologadas_esf",
+            "homologadas_eap": "homologadas_eap",
+            "pagas_esf": "pagas_esf",
+            "pagas_eap_20h": "pagas_eap_20h",
+            "pagas_eap_30h": "pagas_eap_30h",
+            "calc_cadastro_esf_eap": "calc_cadastro_esf_eap",
+            "calc_cadastro_potencial": "calc_cadastro_potencial",
+            "calc_qtde_esf_quadrimestre": "calc_qtde_esf_quadrimestre",
+            "calc_qtde_eap_20h_quadrimestre": "calc_qtde_eap_20h_quadrimestre",
+            "calc_qtde_eap_30h_quadrimestre": "calc_qtde_eap_30h_quadrimestre",
+            "calc_qtde_pop_vulneravel": "calc_qtde_pop_vulneravel",
+            "calc_qtde_pop_nao_vulneravel": "calc_qtde_pop_nao_vulneravel",
+            "calc_qtde_cadastro_pagamento": "calc_qtde_cadastro_pagamento",
+            "calc_valor_ponto_vulneravel": "calc_valor_ponto_vulneravel",
+            "calc_valor_ponto_nao_vulneravel": "calc_valor_ponto_nao_vulneravel",
+            "calc_valor_ponto_por_equipe": "calc_valor_ponto_por_equipe",
+            "calc_valor_pagamento_por_equipe_quadrimestre": "calc_valor_pagamento_por_equipe_quadrimestre",
+            "comp_esf_completas": "comp_esf_completas",
+            "comp_esf_incompletas_75": "comp_esf_incompletas_75",
+            "comp_esf_incompletas_50": "comp_esf_incompletas_50",
+            "comp_esf_incompletas_25": "comp_esf_incompletas_25",
+            "comp_eap_20h_completas": "comp_eap_20h_completas",
+            "comp_eap_20h_incompletas": "comp_eap_20h_incompletas",
+            "comp_eap_30h_completas": "comp_eap_30h_completas",
+            "comp_eap_30h_incompletas": "comp_eap_30h_incompletas",
+            "comp_valor_total_pagamento": "comp_valor_total_pagamento",
+            "novas_esf_completas": "novas_esf_completas",
+            "novas_esf_incompletas_75": "novas_esf_incompletas_75",
+            "novas_esf_incompletas_50": "novas_esf_incompletas_50",
+            "novas_esf_incompletas_25": "novas_esf_incompletas_25",
+            "novas_eap_20h_completas": "novas_eap_20h_completas",
+            "novas_eap_20h_incompletas": "novas_eap_20h_incompletas",
+            "novas_eap_30h_completas": "novas_eap_30h_completas",
+            "novas_eap_30h_incompletas": "novas_eap_30h_incompletas",
+            "novas_cadastro_potencial": "novas_cadastro_potencial",
+            "novas_valor_pagamento_por_equipe": "novas_valor_pagamento_por_equipe",
+            "novas_valor_total_pagamento": "novas_valor_total_pagamento",
+            "especificas_qtde_ecr": "especificas_qtde_ecr",
+            "especificas_cadastro_ecr": "especificas_cadastro_ecr",
+            "especificas_valor_ponto_ecr": "especificas_valor_ponto_ecr",
+            "especificas_valor_pagamento_ecr": "especificas_valor_pagamento_ecr",
+            "especificas_qtde_eapp": "especificas_qtde_eapp",
+            "especificas_cadastro_eapp": "especificas_cadastro_eapp",
+            "especificas_valor_ponto_eapp": "especificas_valor_ponto_eapp",
+            "especificas_valor_pagamento_eapp": "especificas_valor_pagamento_eapp",
+            "especificas_qtde_esfr": "especificas_qtde_esfr",
+            "especificas_cadastro_vulneravel_esfr": "especificas_cadastro_vulneravel_esfr",
+            "especificas_cadastro_nao_vulneravel_esfr": "especificas_cadastro_nao_vulneravel_esfr",
+            "especificas_valor_ponto_vulneravel_esfrb": "especificas_valor_ponto_vulneravel_esfrb",
+            "especificas_valor_ponto_nao_vulneravel_esfr": "especificas_valor_ponto_nao_vulneravel_esfr",
+            "especificas_valor_pagamento_vulneravel_esfr": "especificas_valor_pagamento_vulneravel_esfr",
+            "especificas_valor_pagamento_nao_vulneravel_esfr": "especificas_valor_pagamento_nao_vulneravel_esfr",
+            "valor_capitacao_ponderada": "valor_capitacao_ponderada",
+            "valor_complementacao_financeira": "valor_complementacao_financeira",
+            "ajuste_adicional": "ajuste_adicional",
+            "ajuste_desconto": "ajuste_desconto",
+            "valor_total": "valor_total"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gerenciaaps_ines_cnes_homologados",
+      "descricao": "Homologação de equipes de saúde da família e atenção primária pelo Ministério da Saúde",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "tipos_equipe",
+          "tipo": "dimensao",
+          "colunas": {
+            "codigo_do_tipo_de_equipe": "codigo",
+            "tipo_de_equipe": "nome",
+            "subtipo_de_equipe": "subtipo"
+          }
+        },
+        {
+          "tabela": "equipes_saude",
+          "tipo": "dimensao",
+          "fk_constraints": ["fk_eq_mun", "fk_eq_tipo"],
+          "colunas": {
+            "ine": "codigo_ine",
+            "ibge": "municipio_ibge",
+            "codigo_do_tipo_de_equipe": "tipo_equipe_codigo",
+            "esfera_administrativa": "esfera_administrativa"
+          }
+        },
+        {
+          "tabela": "gerenciaaps_equipes_homologadas",
+          "tipo": "fato",
+          "fk_constraints": ["fk_gap_eqh_ine", "fk_gap_eqh_mun", "fk_gap_eqh_tipo"],
+          "colunas": {
+            "ine": "codigo_ine",
+            "ibge": "municipio_ibge",
+            "codigo_do_tipo_de_equipe": "tipo_equipe_codigo",
+            "portaria": "portaria",
+            "esfera_administrativa": "esfera_administrativa"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gestaofederal_publico_relatorio_solicitacoes",
+      "descricao": "Solicitações públicas de credenciamento/recursos por município",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "gestaofederal_solicitacoes",
+          "tipo": "fato",
+          "fk_constraints": ["fk_gf_sol_mun"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "estrategia": "estrategia",
+            "qtde_solicitada": "qtde_solicitada"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gerenciaaps_solicitacoes_adesao",
+      "descricao": "Solicitações de adesão a programas da APS",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "gerenciaaps_solicitacoes_adesao_fato",
+          "tipo": "fato",
+          "fk_constraints": ["fk_gap_solad_mun"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "gestao": "gestao",
+            "numero_da_solicitacao": "numero_solicitacao",
+            "programa": "programa",
+            "situacao_da_adesao": "situacao_adesao"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gerenciaaps_outros_incentivos_prt_3263_2019",
+      "descricao": "Incentivo financeiro a equipes homologadas sob a Portaria 3.263/2019",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "equipes_saude",
+          "tipo": "dimensao",
+          "colunas": {
+            "ine": "codigo_ine",
+            "ibge": "municipio_ibge"
+          }
+        },
+        {
+          "tabela": "incentivos_equipes_prt_3263_2019",
+          "tipo": "fato",
+          "fk_constraints": ["fk_inc3263_mun", "fk_inc3263_ine"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "ine": "codigo_ine"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gerenciaaps_outros_incentivos_prt_331_2022",
+      "descricao": "Avaliação de cumprimento de requisitos de custeio da Portaria 331/2022",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "estabelecimentos_saude",
+          "tipo": "dimensao",
+          "colunas": {
+            "cnes_solicitado": "codigo_cnes",
+            "ibge": "municipio_ibge",
+            "tipo_da_unidade": "tipo_unidade_codigo"
+          }
+        },
+        {
+          "tabela": "portarias_normativas",
+          "tipo": "dimensao",
+          "valores_fixos": { "numero": "PRT 331/2022", "ano": 2022 }
+        },
+        {
+          "tabela": "incentivos_cnes_avaliacoes",
+          "tipo": "fato",
+          "fk_constraints": ["fk_inc_cnes_port", "fk_inc_cnes_mun", "fk_inc_cnes_est"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "cnes_solicitado": "codigo_cnes",
+            "comp_cnes": "comp_cnes",
+            "tipo_da_unidade": "tipo_unidade",
+            "unidade_ativa": "unidade_ativa",
+            "unidade_valida": "unidade_valida",
+            "classificacao_validada": "classificacao_validada",
+            "qtde_de_medicos": "qtde_medicos",
+            "qtde_de_enfermeiros": "qtde_enfermeiros",
+            "qtde_de_tecnico_auxiliar_enfermagem": "qtde_tecnico_auxiliar_enfermagem",
+            "carga_horaria_de_medicos": "carga_horaria_medicos",
+            "carga_horaria_de_enfermeiros": "carga_horaria_enfermeiros",
+            "carga_horaria_de_tecnico_auxiliar_enfermagem": "carga_horaria_tecnico_auxiliar_enfermagem",
+            "cumpriu_requisito_custeio": "cumpriu_requisito_custeio"
+          },
+          "valores_fixos": {
+            "portaria_origem": "PRT 331/2022"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gerenciaaps_outros_incentivos_prt_650_2021",
+      "descricao": "Avaliação de cumprimento de requisitos de custeio da Portaria 650/2021",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "estabelecimentos_saude",
+          "tipo": "dimensao",
+          "colunas": {
+            "cnes_solicitado": "codigo_cnes",
+            "ibge": "municipio_ibge",
+            "tipo_da_unidade": "tipo_unidade_codigo"
+          }
+        },
+        {
+          "tabela": "portarias_normativas",
+          "tipo": "dimensao",
+          "valores_fixos": { "numero": "PRT 650/2021", "ano": 2021 }
+        },
+        {
+          "tabela": "incentivos_cnes_avaliacoes",
+          "tipo": "fato",
+          "fk_constraints": ["fk_inc_cnes_port", "fk_inc_cnes_mun", "fk_inc_cnes_est"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "cnes_solicitado": "codigo_cnes",
+            "comp_cnes": "comp_cnes",
+            "tipo_da_unidade": "tipo_unidade",
+            "unidade_ativa": "unidade_ativa",
+            "unidade_valida": "unidade_valida",
+            "classificacao_validada": "classificacao_validada",
+            "qtde_de_medicos": "qtde_medicos",
+            "qtde_de_enfermeiros": "qtde_enfermeiros",
+            "qtde_de_tecnico_auxiliar_enfermagem": "qtde_tecnico_auxiliar_enfermagem",
+            "carga_horaria_de_medicos": "carga_horaria_medicos",
+            "carga_horaria_de_enfermeiros": "carga_horaria_enfermeiros",
+            "carga_horaria_de_tecnico_auxiliar_enfermagem": "carga_horaria_tecnico_auxiliar_enfermagem",
+            "cumpriu_requisito_custeio": "cumpriu_requisito_custeio",
+            "contemplado_portaria_650": "contemplado_portaria_650"
+          },
+          "valores_fixos": {
+            "portaria_origem": "PRT 650/2021"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gerenciaaps_outros_incentivos_prt_2010_2021",
+      "descricao": "Avaliação de cumprimento de requisitos de custeio da Portaria 2.010/2021",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "estabelecimentos_saude",
+          "tipo": "dimensao",
+          "colunas": {
+            "cnes_solicitado": "codigo_cnes",
+            "ibge": "municipio_ibge",
+            "tipo_da_unidade": "tipo_unidade_codigo"
+          }
+        },
+        {
+          "tabela": "portarias_normativas",
+          "tipo": "dimensao",
+          "valores_fixos": { "numero": "PRT 2010/2021", "ano": 2021 }
+        },
+        {
+          "tabela": "incentivos_cnes_avaliacoes",
+          "tipo": "fato",
+          "fk_constraints": ["fk_inc_cnes_port", "fk_inc_cnes_mun", "fk_inc_cnes_est"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "cnes_solicitado": "codigo_cnes",
+            "comp_cnes": "comp_cnes",
+            "tipo_da_unidade": "tipo_unidade",
+            "unidade_ativa": "unidade_ativa",
+            "unidade_valida": "unidade_valida",
+            "classificacao_validada": "classificacao_validada",
+            "qtde_de_medicos": "qtde_medicos",
+            "qtde_de_enfermeiros": "qtde_enfermeiros",
+            "qtde_de_tecnico_auxiliar_enfermagem": "qtde_tecnico_auxiliar_enfermagem",
+            "carga_horaria_de_medicos": "carga_horaria_medicos",
+            "carga_horaria_de_enfermeiros": "carga_horaria_enfermeiros",
+            "carga_horaria_de_tecnico_auxiliar_enfermagem": "carga_horaria_tecnico_auxiliar_enfermagem",
+            "cumpriu_requisito_custeio": "cumpriu_requisito_custeio"
+          },
+          "valores_fixos": {
+            "portaria_origem": "PRT 2010/2021"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "gerenciaaps_outros_incentivos_prt_3978_2021",
+      "descricao": "Avaliação de cumprimento de requisitos de custeio da Portaria 3.978/2021",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "estabelecimentos_saude",
+          "tipo": "dimensao",
+          "colunas": {
+            "cnes_solicitado": "codigo_cnes",
+            "ibge": "municipio_ibge",
+            "tipo_da_unidade": "tipo_unidade_codigo"
+          }
+        },
+        {
+          "tabela": "portarias_normativas",
+          "tipo": "dimensao",
+          "valores_fixos": { "numero": "PRT 3978/2021", "ano": 2021 }
+        },
+        {
+          "tabela": "incentivos_cnes_avaliacoes",
+          "tipo": "fato",
+          "fk_constraints": ["fk_inc_cnes_port", "fk_inc_cnes_mun", "fk_inc_cnes_est"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "cnes_solicitado": "codigo_cnes",
+            "comp_cnes": "comp_cnes",
+            "tipo_da_unidade": "tipo_unidade",
+            "unidade_ativa": "unidade_ativa",
+            "unidade_valida": "unidade_valida",
+            "classificacao_validada": "classificacao_validada",
+            "qtde_de_medicos": "qtde_medicos",
+            "qtde_de_enfermeiros": "qtde_enfermeiros",
+            "qtde_de_tecnico_auxiliar_enfermagem": "qtde_tecnico_auxiliar_enfermagem",
+            "carga_horaria_de_medicos": "carga_horaria_medicos",
+            "carga_horaria_de_enfermeiros": "carga_horaria_enfermeiros",
+            "carga_horaria_de_tecnico_auxiliar_enfermagem": "carga_horaria_tecnico_auxiliar_enfermagem",
+            "cumpriu_requisito_custeio": "cumpriu_requisito_custeio"
+          },
+          "valores_fixos": {
+            "portaria_origem": "PRT 3978/2021"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "cobertura_aps",
+      "descricao": "Indicadores consolidados de cobertura da APS por competência",
+      "tabelas_destino": [
+        {
+          "tabela": "cobertura_aps",
+          "tipo": "fato",
+          "colunas": {
+            "comp_cnes": "comp_cnes",
+            "populacao": "populacao",
+            "qt_esf": "qt_esf",
+            "qt_eap_20hs": "qt_eap_20hs",
+            "qt_eap_30hs": "qt_eap_30hs",
+            "qt_ecr": "qt_ecr",
+            "qt_cadastro_ecr": "qt_cadastro_ecr",
+            "qt_eapp_20hs": "qt_eapp_20hs",
+            "qt_cadastro_eapp_20hs": "qt_cadastro_eapp_20hs",
+            "qt_eapp_30hs": "qt_eapp_30hs",
+            "qt_cadastro_eapp_30hs": "qt_cadastro_eapp_30hs",
+            "qt_esfr": "qt_esfr",
+            "qt_cadastro_esfr": "qt_cadastro_esfr",
+            "qt_cadastros_das_ecr_e_eapp": "qt_cadastros_das_ecr_e_eapp",
+            "qt_capacidade_da_equipe": "qt_capacidade_da_equipe",
+            "cobertura_aps": "cobertura_aps_percentual"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "cobertura_aps_historico",
+      "descricao": "Histórico nacional de cobertura da APS",
+      "tabelas_destino": [
+        {
+          "tabela": "cobertura_aps_historico",
+          "tipo": "fato",
+          "colunas": {
+            "competencia_cnes": "competencia_cnes",
+            "populacao": "populacao",
+            "qt_eap_financiada": "qt_eap_financiada",
+            "qt_esf_financiada": "qt_esf_financiada",
+            "qt_cadastros_eap_financiadas": "qt_cadastros_eap_financiadas",
+            "qt_cadastros_esf_financiadas": "qt_cadastros_esf_financiadas",
+            "qt_total_de_cadastros_lim_pop_ibge": "qt_total_de_cadastros_lim_pop_ibge",
+            "cobertura_aps": "cobertura_aps_percentual"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "cobertura_saude_bucal_v2",
+      "descricao": "Indicadores consolidados de cobertura de saúde bucal",
+      "tabelas_destino": [
+        {
+          "tabela": "cobertura_saude_bucal_v2",
+          "tipo": "fato",
+          "colunas": {
+            "comp_cnes": "comp_cnes",
+            "populacao": "populacao",
+            "ano_de_referencia": "ano_de_referencia",
+            "qt_esb_40h": "qt_esb_40h",
+            "qt_esb_30h": "qt_esb_30h",
+            "qt_esb_20h": "qt_esb_20h",
+            "qt_parametro_cadastro_equipe_sb": "qt_parametro_cadastro_equipe_sb",
+            "cobertura_sb_sf": "cobertura_sb_sf_percentual",
+            "qt_esfr": "qt_esfr",
+            "qt_ecr": "qt_ecr",
+            "qt_eapp": "qt_eapp",
+            "qt_sisab_cadastro_equipe_esfr_ecr_eapp": "qt_sisab_cadastro_equipe_esfr_ecr_eapp",
+            "qt_parametro_cadastro_equipe_sb_aps": "qt_parametro_cadastro_equipe_sb_aps",
+            "cobertura_sb_aps": "cobertura_sb_aps_percentual"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "cobertura_saude_bucal_v2_historico",
+      "descricao": "Histórico nacional de cobertura de saúde bucal",
+      "tabelas_destino": [
+        {
+          "tabela": "cobertura_saude_bucal_v2_historico",
+          "tipo": "fato",
+          "colunas": {
+            "comp_cnes": "comp_cnes",
+            "populacao": "populacao",
+            "num_esfsb_cob": "num_esfsb_cob",
+            "estim_pop_cob_esfsb": "estim_pop_cob_esfsb",
+            "cobertura_esfsb": "cobertura_esfsb_percentual",
+            "estim_pop_cob_sb_ab": "estim_pop_cob_sb_ab",
+            "cobertura_sb_ab": "cobertura_sb_ab_percentual"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "cobertura_acs",
+      "descricao": "Indicadores consolidados de cobertura dos Agentes Comunitários de Saúde (ACS)",
+      "tabelas_destino": [
+        {
+          "tabela": "cobertura_acs",
+          "tipo": "fato",
+          "colunas": {
+            "comp_cnes": "comp_cnes",
+            "populacao": "populacao",
+            "qt_acs_ativa": "qt_acs_ativa",
+            "qt_acs_cobertura": "qt_acs_cobertura",
+            "qt_populacao_coberta": "qt_populacao_coberta",
+            "cobertura_acs": "cobertura_acs_percentual"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "mapas_sus_unidades_cnes_realocadas",
+      "descricao": "Cadastro detalhado geoespacial de unidades CNES, equipes INE e indicadores assistenciais",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": {
+            "sg_uf": "sigla",
+            "co_uf_ibge": "codigo_ibge",
+            "no_uf": "nome",
+            "no_regiao": "regiao"
+          }
+        },
+        {
+          "tabela": "regioes_saude",
+          "tipo": "dimensao",
+          "fk_constraints": ["fk_reg_saude_uf"],
+          "colunas": {
+            "co_regiao_saude": "codigo",
+            "no_regiao_saude": "nome",
+            "sg_uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "fk_constraints": ["fk_mun_uf", "fk_mun_reg_saude"],
+          "colunas": {
+            "co_municipio": "codigo_ibge",
+            "no_municipio": "nome",
+            "sg_uf": "uf_sigla",
+            "co_regiao_saude": "regiao_saude_codigo",
+            "co_regint": "codigo_regint",
+            "co_microrregiao": "codigo_microrregiao",
+            "co_macrorregional": "codigo_macrorregional",
+            "no_macrorregional": "nome_macrorregional",
+            "tipologia": "tipologia",
+            "nu_populacao": "populacao",
+            "st_capital": "st_capital",
+            "st_amazonia": "st_amazonia",
+            "st_fronteira": "st_fronteira"
+          }
+        },
+        {
+          "tabela": "estabelecimentos_saude",
+          "tipo": "dimensao",
+          "fk_constraints": ["fk_est_mun"],
+          "colunas": {
+            "co_cnes": "codigo_cnes",
+            "no_fantasia": "nome_fantasia",
+            "co_municipio": "municipio_ibge",
+            "tp_unidade": "tipo_unidade_codigo",
+            "ds_tipo_unidade": "tipo_unidade_descricao",
+            "no_logradouro": "logradouro",
+            "co_cep": "cep",
+            "co_turno_atendimento": "turno_atendimento",
+            "latitude": "latitude",
+            "longitude": "longitude",
+            "geometry": "geometry"
+          }
+        },
+        {
+          "tabela": "tipos_equipe",
+          "tipo": "dimensao",
+          "colunas": {
+            "tp_equipe": "codigo",
+            "sg_equipe": "sigla",
+            "ds_tipo_equipe": "nome",
+            "co_sub_tipo_equipe": "subtipo"
+          }
+        },
+        {
+          "tabela": "equipes_saude",
+          "tipo": "dimensao",
+          "fk_constraints": ["fk_eq_cnes", "fk_eq_mun", "fk_eq_tipo"],
+          "colunas": {
+            "co_equipe": "codigo_ine",
+            "co_cnes": "codigo_cnes",
+            "co_municipio": "municipio_ibge",
+            "tp_equipe": "tipo_equipe_codigo",
+            "no_referencia": "nome_referencia",
+            "co_area": "area_codigo",
+            "modalidadde": "modalidade",
+            "equipes_vinculadas": "equipes_vinculadas",
+            "st_ativa": "st_ativa",
+            "st_equipe_valida": "st_equipe_valida"
+          }
+        },
+        {
+          "tabela": "mapas_sus_equipes_indicadores",
+          "tipo": "fato",
+          "fk_constraints": ["fk_msus_ind_ine", "fk_msus_ind_cnes", "fk_msus_ind_mun"],
+          "colunas": {
+            "co_equipe": "codigo_equipe",
+            "co_cnes": "codigo_cnes",
+            "co_municipio": "municipio_ibge",
+            "cadastros_acompanhados": "cadastros_acompanhados",
+            "cadastros_vinculados": "cadastros_vinculados",
+            "pct": "pct",
+            "indigenas": "indigenas",
+            "ribeirinhos": "ribeirinhos",
+            "quilombolas": "quilombolas",
+            "pescadores": "pescadores",
+            "assentada": "assentada",
+            "parametro_cadastral": "parametro_cadastral",
+            "cadastros_previne": "cadastros_previne",
+            "dentro_municipio": "dentro_municipio"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "rel_historico_pagamento_esf",
+      "descricao": "Série histórica longitudinal dos pagamentos de ESF, ACS, ESB e NASF",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "codigo": "codigo_ibge",
+            "mun_6": "codigo_ibge_6",
+            "municipio": "nome",
+            "uf": "uf_sigla",
+            "populacao": "populacao"
+          }
+        },
+        {
+          "tabela": "rel_historico_pagamento_esf",
+          "tipo": "fato",
+          "fk_constraints": ["fk_rhp_esf_mun"],
+          "colunas": {
+            "codigo": "municipio_ibge",
+            "ano": "ano",
+            "mes": "mes",
+            "competencia": "competencia",
+            "populacao": "populacao",
+            "teto_de_acs": "teto_de_acs",
+            "acs_qualificados": "acs_qualificados",
+            "acs_no_siab": "acs_no_siab",
+            "acs_implantado": "acs_implantado",
+            "pop_acs": "pop_acs",
+            "pct_acs": "pct_acs",
+            "incentivo_ao_pacs": "incentivo_ao_pacs",
+            "teto_de_esf": "teto_de_esf",
+            "esf_qualificadas": "esf_qualificadas",
+            "esf_no_siab": "esf_no_siab",
+            "esf_implantada": "esf_implantada",
+            "pct_cobertura": "pct_cobertura",
+            "pop_acomp": "pop_acomp",
+            "incentivo_ao_psf": "incentivo_ao_psf",
+            "ia_psf": "ia_psf",
+            "esb_mod_1_qualificadas": "esb_mod_1_qualificadas",
+            "esb_mod_1_siab": "esb_mod_1_siab",
+            "esb_mod_1_implantada": "esb_mod_1_implantada",
+            "incentivo_mod_1": "incentivo_mod_1",
+            "esb_mod_2_qualificadas": "esb_mod_2_qualificadas",
+            "esb_mod_2_siab": "esb_mod_2_siab",
+            "esb_mod_2_implantada": "esb_mod_2_implantada",
+            "incentivo_mod_2": "incentivo_mod_2",
+            "pop_esb": "pop_esb",
+            "pct_esb": "pct_esb",
+            "incentivo_adicional": "incentivo_adicional",
+            "nasf_1_cred": "nasf_1_cred",
+            "nasf_1_sistema": "nasf_1_sistema",
+            "nasf_1_pago": "nasf_1_pago",
+            "nasf_1_valor": "nasf_1_valor",
+            "nasf_2_cred": "nasf_2_cred",
+            "nasf_2_sistema": "nasf_2_sistema",
+            "nasf_2_pago": "nasf_2_pago",
+            "nasf_2_valor": "nasf_2_valor",
+            "nasf_3_cred": "nasf_3_cred",
+            "nasf_3_sistema": "nasf_3_sistema",
+            "nasf_3_pago": "nasf_3_pago",
+            "nasf_3_valor": "nasf_3_valor",
+            "nasf_inc_adicional": "nasf_inc_adicional"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "rel_historico_pagamento_outros",
+      "descricao": "Histórico de pagamentos de outros incentivos da APS (CNR, UOM, UBSF, Microscopistas)",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "rel_historico_pagamento_outros",
+          "tipo": "fato",
+          "fk_constraints": ["fk_rhp_out_mun"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "financeira": "competencia_financeira",
+            "cnr_i_creden": "cnr_i_creden",
+            "cnr_ii_creden": "cnr_ii_creden",
+            "cnr_iii_creden": "cnr_iii_creden",
+            "cnr_i_informado": "cnr_i_informado",
+            "cnr_ii_informado": "cnr_ii_informado",
+            "cnr_iii_informado": "cnr_iii_informado",
+            "cnr_i_pago": "cnr_i_pago",
+            "cnr_ii_pago": "cnr_ii_pago",
+            "cnr_iii_pago": "cnr_iii_pago",
+            "microscopista_cred": "microscopista_cred",
+            "microscopista_informados": "microscopista_informados",
+            "microscopista_pago": "microscopista_pago",
+            "uom_cred": "uom_cred",
+            "uom_informado": "uom_informado",
+            "uom_pago": "uom_pago",
+            "ubsf_cred": "ubsf_cred",
+            "ubsfsb_cred": "ubsfsb_cred",
+            "ubsf_com_esff_informado": "ubsf_com_esff_informado",
+            "ubsf_com_esffsb_informado": "ubsf_com_esffsb_informado",
+            "ubsf_com_esff_mm_informado": "ubsf_com_esff_mm_informado",
+            "ubsf_com_esffsb_mm_informado": "ubsf_com_esffsb_mm_informado",
+            "ubsf_pago": "ubsf_pago",
+            "gestao_cred": "gestao_cred",
+            "eabp_cred": "eabp_cred",
+            "eabp_informado": "eabp_informado",
+            "eabp_pago": "eabp_pago"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_adesao_pse",
+      "descricao": "Adesões das escolas municipais e estaduais ao Programa Saúde na Escola (PSE)",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "escolas_pse",
+          "tipo": "dimensao",
+          "fk_constraints": ["fk_esc_mun"],
+          "colunas": {
+            "inep": "codigo_inep",
+            "nome_da_escola": "nome_escola",
+            "ibge": "municipio_ibge",
+            "tipo_de_localizacao": "tipo_localizacao",
+            "localizacao_diferenciada": "localizacao_diferenciada",
+            "esfera_administrativa": "esfera_administrativa"
+          }
+        },
+        {
+          "tabela": "pse_adesao_escolas",
+          "tipo": "fato",
+          "fk_constraints": ["fk_pse_ad_esc"],
+          "colunas": {
+            "inep": "escola_inep",
+            "ciclo": "ciclo",
+            "quantidade_educandos": "quantidade_educandos",
+            "quantidade_creche": "quantidade_creche",
+            "quantidade_pre_escola": "quantidade_pre_escola",
+            "quantidade_fundamental": "quantidade_fundamental",
+            "quantidade_medio": "quantidade_medio",
+            "quantidade_profissional": "quantidade_profissional",
+            "quantidade_eja": "quantidade_eja",
+            "situacao_adesao": "situacao_adesao",
+            "parte_do_grupo_prioritario": "parte_do_grupo_prioritario",
+            "possui_mais_de_50_dos_educandos_no_bfa": "possui_mais_de_50_dos_educandos_no_bfa",
+            "part_sis_nac_acomp_medidas_socioeducativas": "participa_do_sistema_nacional_medidas_socioeducativas",
+            "participou_do_nutrisus": "participou_do_nutrisus",
+            "aderiu_ao_programa_de_obesidade": "aderiu_ao_programa_de_obesidade"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_homologacao_saude_com_agente",
+      "descricao": "Homologação dos agentes de saúde que concluíram cursos técnicos do programa Saúde com Agente",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "agentes_saude_homologados",
+          "tipo": "fato",
+          "fk_constraints": ["fk_ag_hom_mun"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "nome_do_agente": "nome_do_agente",
+            "curso": "curso",
+            "vinculo": "vinculo",
+            "data_de_finalizacao": "data_de_finalizacao"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "sisab_validacao",
+      "descricao": "Totais de validações e rejeições do SISAB",
+      "tabelas_destino": [
+        {
+          "tabela": "sisab_validacoes",
+          "tipo": "fato",
+          "colunas": {
+            "validacao": "validacao",
+            "total": "total"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_indicador_painel",
+      "descricao": "Indicadores agregados do painel de desempenho da APS",
+      "tabelas_destino": [
+        {
+          "tabela": "painel_indicadores_aps",
+          "tipo": "fato",
+          "colunas": {
+            "pre_natal_6_consultas": "pre_natal_6_consultas",
+            "pre_natal_sifilis_e_hiv": "pre_natal_sifilis_e_hiv",
+            "gestantes_saude_bucal": "gestantes_saude_bucal",
+            "cobertura_citopatologico": "cobertura_citopatologico",
+            "cobertura_polio_e_penta": "cobertura_polio_e_penta",
+            "hipertensao_pa_aferida": "hipertensao_pa_aferida",
+            "diabetes_hemoglobina_glicada": "diabetes_hemoglobina_glicada"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_indicador_cadastro",
+      "descricao": "Indicador total de cadastros da APS por competência",
+      "tabelas_destino": [
+        {
+          "tabela": "indicadores_cadastro_aps",
+          "tipo": "fato",
+          "colunas": {
+            "competencia": "competencia",
+            "total": "total"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_saude_producao",
+      "descricao": "Volume nacional de produção de atendimentos, procedimentos e visitas da APS",
+      "tabelas_destino": [
+        {
+          "tabela": "producao_saude_nacional",
+          "tipo": "fato",
+          "colunas": {
+            "brasil": "abrangencia",
+            "atendimento_individual": "atendimento_individual",
+            "atendimento_odontologico": "atendimento_odontologico",
+            "procedimento": "procedimento",
+            "visita_domiciliar": "visita_domiciliar"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_indicador_prenatal",
+      "descricao": "Total de gestantes acompanhadas no pré-natal por competência",
+      "tabelas_destino": [
+        {
+          "tabela": "indicadores_prenatal_aps",
+          "tipo": "fato",
+          "colunas": {
+            "competencia": "competencia",
+            "total_gestantes": "total_gestantes"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_saude_atividade_coletiva",
+      "descricao": "Total de atividades coletivas e participantes da APS",
+      "tabelas_destino": [
+        {
+          "tabela": "producao_atividade_coletiva",
+          "tipo": "fato",
+          "colunas": {
+            "brasil": "abrangencia",
+            "quantidade_atividade": "quantidade_atividade",
+            "num_participantes": "num_participantes"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_descontinuados_informatiza_aps",
+      "descricao": "Homologações e cancelamentos do programa Informatiza APS",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "equipes_saude",
+          "tipo": "dimensao",
+          "colunas": {
+            "ine": "codigo_ine",
+            "ibge": "municipio_ibge",
+            "tipo_da_equipe": "tipo_equipe_codigo"
+          }
+        },
+        {
+          "tabela": "informatiza_aps_homologacoes",
+          "tipo": "fato",
+          "fk_constraints": ["fk_inf_aps_ine", "fk_inf_aps_mun"],
+          "colunas": {
+            "ine": "codigo_ine",
+            "ibge": "municipio_ibge",
+            "situacao": "situacao",
+            "portaria_de_homologacao": "portaria_de_homologacao",
+            "portaria_de_cancelamento": "portaria_de_cancelamento"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_relpagamentopmaq",
+      "descricao": "Histórico de pagamentos e repasses do PMAQ-AB",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "rel_pagamentos_pmaq",
+          "tipo": "fato",
+          "fk_constraints": ["fk_pmaq_mun"],
+          "colunas": {
+            "ibge": "municipio_ibge",
+            "competencia_cnes": "competencia_cnes",
+            "competencia_financeira": "competencia_financeira",
+            "qnt_esf": "qnt_esf",
+            "qnt_esb": "qnt_esb",
+            "qnt_nasf": "qnt_nasf",
+            "valor_esf": "valor_esf",
+            "valor_esb": "valor_esb",
+            "valor_nasf": "valor_nasf",
+            "subtotal": "subtotal",
+            "desconto": "desconto",
+            "total": "total"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "acoes_e_programas_descontinuados_adesao_saude_hora",
+      "descricao": "Adesões de unidades de saúde ao programa Saúde na Hora",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "estabelecimentos_saude",
+          "tipo": "dimensao",
+          "colunas": {
+            "cnes": "codigo_cnes",
+            "ibge": "municipio_ibge"
+          }
+        },
+        {
+          "tabela": "saude_na_hora_adesoes",
+          "tipo": "fato",
+          "fk_constraints": ["fk_snh_cnes", "fk_snh_mun"],
+          "colunas": {
+            "cnes": "codigo_cnes",
+            "ibge": "municipio_ibge",
+            "tipo_da_adesao": "tipo_da_adesao",
+            "situacao_da_adesao": "situacao_da_adesao",
+            "portaria_de_adesao": "portaria_de_adesao",
+            "portaria_de_cancelamento": "portaria_de_cancelamento"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "siaps_publico",
+      "descricao": "Avaliações quadrimestrais de desempenho das equipes da APS por dimensão no SIAPS",
+      "tabelas_destino": [
+        {
+          "tabela": "estados",
+          "tipo": "dimensao",
+          "colunas": { "uf": "sigla" }
+        },
+        {
+          "tabela": "municipios",
+          "tipo": "dimensao",
+          "colunas": {
+            "codigo_ibge": "codigo_ibge",
+            "municipio": "nome",
+            "uf": "uf_sigla"
+          }
+        },
+        {
+          "tabela": "siaps_avaliacoes_equipes",
+          "tipo": "fato",
+          "fk_constraints": ["fk_siaps_mun"],
+          "colunas": {
+            "codigo_ibge": "municipio_ibge",
+            "quadrimestre_ano": "quadrimestre_ano",
+            "tipo_de_equipe": "tipo_de_equipe",
+            "dimensao_por_tipo_de_equipe": "dimensao_por_tipo_de_equipe",
+            "total_de_equipe_regular": "total_de_equipe_regular",
+            "total_de_equipe_suficiente": "total_de_equipe_suficiente",
+            "total_de_equipe_bom": "total_de_equipe_bom",
+            "total_de_equipe_otimo": "total_de_equipe_otimo"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "siaps_publico_praticas_assistenciais_atendimentos_individuais",
+      "descricao": "Práticas assistenciais: Atendimentos individuais divididos por gênero e total nacional",
+      "tabelas_destino": [
+        {
+          "tabela": "siaps_praticas_demografia",
+          "tipo": "fato",
+          "valores_fixos": { "categoria": "atendimentos_individuais" },
+          "colunas": {
+            "brasil": "abrangencia",
+            "masculino": "masculino",
+            "feminino": "feminino",
+            "total": "total"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "siaps_publico_praticas_assistenciais_tab_1",
+      "descricao": "Práticas assistenciais Tabela 1: Atendimentos por gênero",
+      "tabelas_destino": [
+        {
+          "tabela": "siaps_praticas_demografia",
+          "tipo": "fato",
+          "valores_fixos": { "categoria": "praticas_assistenciais_tab_1" },
+          "colunas": {
+            "brasil": "abrangencia",
+            "masculino": "masculino",
+            "feminino": "feminino",
+            "total": "total"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "siaps_publico_praticas_assistenciais_tab_2",
+      "descricao": "Práticas assistenciais Tabela 2: Atendimentos por gênero",
+      "tabelas_destino": [
+        {
+          "tabela": "siaps_praticas_demografia",
+          "tipo": "fato",
+          "valores_fixos": { "categoria": "praticas_assistenciais_tab_2" },
+          "colunas": {
+            "brasil": "abrangencia",
+            "masculino": "masculino",
+            "feminino": "feminino",
+            "total": "total"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "siaps_publico_praticas_assistenciais_tab_3",
+      "descricao": "Práticas assistenciais Tabela 3: Atendimentos por gênero",
+      "tabelas_destino": [
+        {
+          "tabela": "siaps_praticas_demografia",
+          "tipo": "fato",
+          "valores_fixos": { "categoria": "praticas_assistenciais_tab_3" },
+          "colunas": {
+            "brasil": "abrangencia",
+            "masculino": "masculino",
+            "feminino": "feminino",
+            "total": "total"
+          }
+        }
+      ]
+    },
+    {
+      "tabela_origem": "siaps_publico_praticas_assistenciais_tab_4",
+      "descricao": "Práticas assistenciais Tabela 4: Distribuição por tipo de equipe",
+      "tabelas_destino": [
+        {
+          "tabela": "siaps_praticas_por_tipo_equipe",
+          "tipo": "fato",
+          "colunas": {
+            "brasil": "abrangencia",
+            "sem_informacao": "sem_informacao",
+            "esf_equipe_de_saude_da_familia": "esf_equipe_de_saude_da_familia",
+            "esfsb_m1_esf_com_saude_bucal_m_i": "esfsb_m1_esf_com_saude_bucal_m_i",
+            "esfsb_m2_esf_com_saude_bucal_m_ii": "esfsb_m2_esf_com_saude_bucal_m_ii",
+            "eacs_equipe_de_agentes_comunitarios_de_saude": "eacs_equipe_de_agentes_comunitarios_de_saude",
+            "nasf1_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_1": "nasf1_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_1",
+            "nasf2_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_2": "nasf2_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_2",
+            "eacssb_m1_eq_agentes_comunitarios_com_saude_bucal_mi": "eacssb_m1_eq_agentes_comunitarios_com_saude_bucal_mi",
+            "eacssb_m2_eq_agentes_comunitarios_com_saude_bucal_mii": "eacssb_m2_eq_agentes_comunitarios_com_saude_bucal_mii",
+            "esfrsb_mi_esf_ribeirinha_com_saude_bucal_mi": "esfrsb_mi_esf_ribeirinha_com_saude_bucal_mi",
+            "eab1_equipe_de_atencao_basica_tipo_i": "eab1_equipe_de_atencao_basica_tipo_i",
+            "eab1sb_equipe_de_atencao_basica_tipo_i_com_saude_bucal": "eab1sb_equipe_de_atencao_basica_tipo_i_com_saude_bucal",
+            "esf1_estrategia_de_saude_da_familia_tipo_i": "esf1_estrategia_de_saude_da_familia_tipo_i",
+            "esf1sb_m1_esf_tipo_i_com_saude_bucal_modalidade_i": "esf1sb_m1_esf_tipo_i_com_saude_bucal_modalidade_i",
+            "esf4_estrategia_de_saude_da_familia_tipo_iv": "esf4_estrategia_de_saude_da_familia_tipo_iv",
+            "esf4sb_m1_esf_tipo_iv_com_saude_bucal_modalidade_i": "esf4sb_m1_esf_tipo_iv_com_saude_bucal_modalidade_i",
+            "esf4sb_m2_esf_tipo_iv_com_saude_bucal_modalidade_ii": "esf4sb_m2_esf_tipo_iv_com_saude_bucal_modalidade_ii",
+            "esftrans_esf_transitoria": "esftrans_esf_transitoria",
+            "esftranssb_m1_esf_transitoria_com_saude_bucal_mi": "esftranssb_m1_esf_transitoria_com_saude_bucal_mi",
+            "esftranssb_m2_esf_transitoria_com_saude_bucal_mii": "esftranssb_m2_esf_transitoria_com_saude_bucal_mii",
+            "ecr_mii_equipe_dos_consultorios_na_rua_modalidade_ii": "ecr_mii_equipe_dos_consultorios_na_rua_modalidade_ii",
+            "nasf3_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_3": "nasf3_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_3",
+            "total": "total"
+          }
+        }
+      ]
+    }
+  ]
+}

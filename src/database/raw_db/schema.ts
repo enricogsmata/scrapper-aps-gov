@@ -127,6 +127,8 @@ export const gerenciaapsInesCnesHomologados = mysqlTable(
     subtipoDeEquipe: text("subtipo_de_equipe"),
     portaria: text("portaria"),
     esferaAdministrativa: text("esfera_administrativa"),
+    cnes: text("cnes"),
+    dominioUnidade: text("dominio_unidade"),
   }
 );
 
@@ -139,6 +141,16 @@ export const gestaofederalPublicoRelatorioSolicitacoes = mysqlTable(
     ibge: text("ibge"),
     estrategia: text("estrategia"),
     qtdeSolicitada: text("qtde_solicitada"),
+    codigoAcaoEstrategica: text("codigo_acao_estrategica"),
+    qtTeto: text("qt_teto"),
+    qtCredenciado: text("qt_credenciado"),
+    qtSaldo: text("qt_saldo"),
+    aplicavelTeto: text("aplicavel_teto"),
+    aplicavelSaldo: text("aplicavel_saldo"),
+    qtMedicinaSolicitada: text("qt_medicina_solicitada"),
+    qtEnfermagemSolicitada: text("qt_enfermagem_solicitada"),
+    qtOdontologiaSolicitada: text("qt_odontologia_solicitada"),
+    qtMultiprofissionalSolicitada: text("qt_multiprofissional_solicitada"),
   }
 );
 
@@ -153,6 +165,10 @@ export const gerenciaapsSolicitacoesAdesao = mysqlTable(
     numeroDaSolicitacao: text("numero_da_solicitacao"),
     programa: text("programa"),
     situacaoDaAdesao: text("situacao_da_adesao"),
+    data: text("data"),
+    sgEstrategia: text("sg_estrategia"),
+    dtCadastro: text("dt_cadastro"),
+    dtAtualizacao: text("dt_atualizacao"),
   }
 );
 
@@ -278,6 +294,7 @@ export const coberturaAps = mysqlTable("cobertura_aps", {
   qtCadastrosDasEcrEEapp: text("qt_cadastros_das_ecr_e_eapp"),
   qtCapacidadeDaEquipe: text("qt_capacidade_da_equipe"),
   coberturaAps: text("cobertura_aps"),
+  qtCadastroEquipeEsfrEcrEapp: text("qt_cadastro_equipe_esfr_ecr_eapp"),
 });
 
 export const coberturaApsHistorico = mysqlTable("cobertura_aps_historico", {
@@ -513,6 +530,8 @@ export const acoesEProgramasAdesaoPse = mysqlTable(
     participaDoSistemaNacionalDeAcompanhamentoDeMedidasSocioeducativas: text("part_sis_nac_acomp_medidas_socioeducativas"),
     participouDoNutrisus: text("participou_do_nutrisus"),
     aderiuAoProgramaDeObesidade: text("aderiu_ao_programa_de_obesidade"),
+    data: text("data"),
+    noUfAcentuado: text("no_uf_acentuado"),
   }
 );
 
@@ -639,6 +658,7 @@ export const acoesEProgramasDescontinuadosAdesaoSaudeHora = mysqlTable(
     situacaoDaAdesao: text("situacao_da_adesao"),
     portariaDeAdesao: text("portaria_de_adesao"),
     portariaDeCancelamento: text("portaria_de_cancelamento"),
+    data: text("data"),
   }
 );
 
@@ -728,5 +748,46 @@ export const siapsPublicoPraticasAssistenciaisTab4 = mysqlTable(
     ecrMiiEquipeDosConsultoriosNaRuaModalidadeIi: text("ecr_mii_equipe_dos_consultorios_na_rua_modalidade_ii"),
     nasf3NucleoDeApoioASaudeDaFamiliaNasfModalidade3: text("nasf3_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_3"),
     total: text("total"),
+  }
+);
+
+export const acoesEProgramasRelatorioConsolidado = mysqlTable(
+  "acoes_e_programas_relatorio_consolidado",
+  {
+    id: serial("id").primaryKey(),
+    vigencia: text("vigencia"),
+    estado: text("estado"),
+    ibge: text("ibge"),
+    qtdBeneficiariosASeremAcompanhados: text("qtd_beneficiarios_a_serem_acompanhados"),
+    qtdBeneficiariosAcompanhados: text("qtd_beneficiarios_acompanhados"),
+    percCoberturaDeBeneficiariosAcompanhados: text("perc_cobertura_de_beneficiarios_acompanhados"),
+    qtdCriancaASerAcompanhada: text("qtd_crianca_a_ser_acompanhada"),
+    qtdCriancaAcompanhada: text("qtd_crianca_acompanhada"),
+    percCoberturaDoAcompDeCriancas: text("perc_cobertura_do_acomp_de_criancas"),
+    qtdCriancaComVacEmDia: text("qtd_crianca_com_vac_em_dia"),
+    percCriancasComVacEmDia: text("perc_criancas_com_vac_em_dia"),
+    qtdCriancaComDadosNutricionais: text("qtd_crianca_com_dados_nutricionais"),
+    percCriancasComDadosNutricionais: text("perc_criancas_com_dados_nutricionais"),
+    qtdGestantesEstimadas: text("qtd_gestantes_estimadas"),
+    qtdGestantesLocalizadas: text("qtd_gestantes_localizadas"),
+    percDeGestantesLocalizadasNoPbf: text("perc_de_gestantes_localizadas_no_pbf"),
+    qtdGestantesPreNatalEmDia: text("qtd_gestantes_pre_natal_em_dia"),
+    coberturaGestantesComPreNatalEmDia: text("cobertura_gestantes_com_pre_natal_em_dia"),
+    qtdGestantesComDadosNutric: text("qtd_gestantes_com_dados_nutric"),
+    percGestantesComDadosNutric: text("perc_gestantes_com_dados_nutric"),
+  }
+);
+
+export const acoesEProgramasProfissionaisCadastrados = mysqlTable(
+  "acoes_e_programas_profissionais_cadastrados",
+  {
+    id: serial("id").primaryKey(),
+    nome: text("nome"),
+    ciclo: text("ciclo"),
+    perfil: text("perfil"),
+    uf: text("uf"),
+    ibge: text("ibge"),
+    municipio: text("municipio"),
+    competencia: text("competencia"),
   }
 );

@@ -360,10 +360,18 @@ export const gerenciaapsEquipesHomologadas = mysqlTable(
     tipoEquipeCodigo: varchar("tipo_equipe_codigo", { length: 10 }),
     portaria: varchar("portaria", { length: 255 }),
     esferaAdministrativa: varchar("esfera_administrativa", { length: 50 }),
+    codigoCnes: varchar("codigo_cnes", { length: 20 }), 
+    dominioUnidade: varchar("dominio_unidade", { length: 150 }), 
   },
   (table) => [
     index("idx_gap_eqh_ine").on(table.codigoIne),
     index("idx_gap_eqh_mun").on(table.municipioIbge),
+    // Adicionando FK para CNES para manter a 3FN
+    foreignKey({
+      name: "fk_gap_eqh_cnes",
+      columns: [table.codigoCnes],
+      foreignColumns: [estabelecimentosSaude.codigoCnes],
+    }),
     foreignKey({
       name: "fk_gap_eqh_ine",
       columns: [table.codigoIne],
@@ -389,6 +397,16 @@ export const gestaofederalSolicitacoes = mysqlTable(
     municipioIbge: varchar("municipio_ibge", { length: 7 }).notNull(),
     estrategia: varchar("estrategia", { length: 150 }).notNull(),
     qtdeSolicitada: int("qtde_solicitada"),
+    codigoAcaoEstrategica: varchar("codigo_acao_estrategica", { length: 50 }), 
+    qtTeto: int("qt_teto"), 
+    qtCredenciado: int("qt_credenciado"), 
+    qtSaldo: int("qt_saldo"), 
+    aplicavelTeto: varchar("aplicavel_teto", { length: 20 }), 
+    aplicavelSaldo: varchar("aplicavel_saldo", { length: 20 }), 
+    qtMedicinaSolicitada: int("qt_medicina_solicitada"), 
+    qtEnfermagemSolicitada: int("qt_enfermagem_solicitada"), 
+    qtOdontologiaSolicitada: int("qt_odontologia_solicitada"), 
+    qtMultiprofissionalSolicitada: int("qt_multiprofissional_solicitada"), 
   },
   (table) => [
     index("idx_gf_sol_mun").on(table.municipioIbge),
@@ -409,6 +427,10 @@ export const gerenciaapsSolicitacoesAdesaoFato = mysqlTable(
     numeroSolicitacao: varchar("numero_solicitacao", { length: 50 }),
     programa: varchar("programa", { length: 150 }),
     situacaoAdesao: varchar("situacao_adesao", { length: 100 }),
+    data: varchar("data", { length: 20 }), 
+    sgEstrategia: varchar("sg_estrategia", { length: 50 }), 
+    dtCadastro: varchar("dt_cadastro", { length: 50 }), 
+    dtAtualizacao: varchar("dt_atualizacao", { length: 50 }), 
   },
   (table) => [
     index("idx_gap_solad_mun").on(table.municipioIbge),
@@ -510,6 +532,7 @@ export const coberturaAps = mysqlTable("cobertura_aps", {
   qtCadastrosDasEcrEEapp: int("qt_cadastros_das_ecr_e_eapp"),
   qtCapacidadeDaEquipe: bigint("qt_capacidade_da_equipe", { mode: "number" }),
   coberturaApsPercentual: decimal("cobertura_aps_percentual", { precision: 5, scale: 2 }),
+  qtCadastroEquipeEsfrEcrEapp: int("qt_cadastro_equipe_esfr_ecr_eapp"), 
 });
 
 export const coberturaApsHistorico = mysqlTable("cobertura_aps_historico", {
@@ -742,6 +765,7 @@ export const pseAdesaoEscolas = mysqlTable(
     participaDoSistemaNacionalMedidasSocioeducativas: boolean("part_sis_nac_acomp_medidas_socioeducativas").default(false),
     participouDoNutrisus: boolean("participou_do_nutrisus").default(false),
     aderiuAoProgramaDeObesidade: boolean("aderiu_ao_programa_de_obesidade").default(false),
+    data: varchar("data", { length: 20 }), 
   },
   (table) => [
     index("idx_pse_ad_esc").on(table.escolaInep),
@@ -860,6 +884,7 @@ export const saudeNaHoraAdesoes = mysqlTable(
     situacaoDaAdesao: varchar("situacao_da_adesao", { length: 100 }),
     portariaDeAdesao: varchar("portaria_de_adesao", { length: 255 }),
     portariaDeCancelamento: varchar("portaria_de_cancelamento", { length: 255 }),
+    data: varchar("data", { length: 20 }),
   },
   (table) => [
     index("idx_snh_cnes").on(table.codigoCnes),
@@ -978,4 +1003,59 @@ export const siapsPraticasPorTipoEquipe = mysqlTable(
     nasf3NucleoDeApoioASaudeDaFamiliaNasfModalidade3: int("nasf3_nucleo_de_apoio_a_saude_da_familia_nasf_modalidade_3"),
     total: int("total"),
   }
+);
+
+export const indicadoresAcompanhamentoPbf = mysqlTable(
+  "indicadores_acompanhamento_pbf",
+  {
+    id: serial("id").primaryKey(),
+    vigencia: varchar("vigencia", { length: 50 }),
+    municipioIbge: varchar("municipio_ibge", { length: 7 }).notNull(),
+    qtdBeneficiariosASeremAcompanhados: int("qtd_beneficiarios_a_serem_acompanhados"),
+    qtdBeneficiariosAcompanhados: int("qtd_beneficiarios_acompanhados"),
+    percCoberturaDeBeneficiariosAcompanhados: decimal("perc_cobertura_de_beneficiarios_acompanhados", { precision: 5, scale: 2 }),
+    qtdCriancaASerAcompanhada: int("qtd_crianca_a_ser_acompanhada"),
+    qtdCriancaAcompanhada: int("qtd_crianca_acompanhada"),
+    percCoberturaDoAcompDeCriancas: decimal("perc_cobertura_do_acomp_de_criancas", { precision: 5, scale: 2 }),
+    qtdCriancaComVacEmDia: int("qtd_crianca_com_vac_em_dia"),
+    percCriancasComVacEmDia: decimal("perc_criancas_com_vac_em_dia", { precision: 5, scale: 2 }),
+    qtdCriancaComDadosNutricionais: int("qtd_crianca_com_dados_nutricionais"),
+    percCriancasComDadosNutricionais: decimal("perc_criancas_com_dados_nutricionais", { precision: 5, scale: 2 }),
+    qtdGestantesEstimadas: int("qtd_gestantes_estimadas"),
+    qtdGestantesLocalizadas: int("qtd_gestantes_localizadas"),
+    percDeGestantesLocalizadasNoPbf: decimal("perc_de_gestantes_localizadas_no_pbf", { precision: 5, scale: 2 }),
+    qtdGestantesPreNatalEmDia: int("qtd_gestantes_pre_natal_em_dia"),
+    coberturaGestantesComPreNatalEmDia: decimal("cobertura_gestantes_com_pre_natal_em_dia", { precision: 5, scale: 2 }),
+    qtdGestantesComDadosNutric: int("qtd_gestantes_com_dados_nutric"),
+    percGestantesComDadosNutric: decimal("perc_gestantes_com_dados_nutric", { precision: 5, scale: 2 }),
+  },
+  (table) => [
+    index("idx_ind_pbf_mun").on(table.municipioIbge),
+    foreignKey({
+      name: "fk_ind_pbf_mun",
+      columns: [table.municipioIbge],
+      foreignColumns: [municipios.codigoIbge],
+    }),
+  ]
+);
+
+export const profissionaisCadastradosProgramas = mysqlTable(
+  "profissionais_cadastrados_programas",
+  {
+    id: serial("id").primaryKey(),
+    nome: varchar("nome", { length: 255 }).notNull(),
+    ciclo: varchar("ciclo", { length: 50 }),
+    perfil: varchar("perfil", { length: 150 }),
+    municipioIbge: varchar("municipio_ibge", { length: 7 }).notNull(),
+    competencia: varchar("competencia", { length: 20 }),
+  },
+  (table) => [
+    index("idx_prof_cad_mun").on(table.municipioIbge),
+    foreignKey({
+      name: "fk_prof_cad_mun",
+      columns: [table.municipioIbge],
+      foreignColumns: [municipios.codigoIbge],
+    }),
+    // Omiti os campos 'uf' e 'municipio' da raw, pois municípioIbge garante a 3FN.
+  ]
 );

@@ -17,31 +17,20 @@ const logger = new_logger(import.meta.url);
 const SELECTORS = {
     uf: 'p-dropdown[formcontrolname="uf"]',
     municipio: 'p-dropdown[formcontrolname="municipio"]',
-    btnDownload: 'button[aria-label="Download"]',
-    btnVerTela: 'button[aria-label="Ver em tela"]'
+    btnDownload: 'app-botao-download-excel button, button[aria-label="Download"]',
+    btnVerTela: 'app-botao[arialabel="Ver em tela"] button, button[aria-label="Ver em tela"]'
 };
 
 async function doDownload(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
     const log = logger.forMethod('doDownload');
 
-    const isDownloadDisabled = await page.evaluate((sel) => {
+    const isVerTelaDisabled = await page.evaluate((sel) => {
         const el = document.querySelector<HTMLButtonElement>(sel);
-        return !el || el.disabled || el.classList.contains('p-disabled');
-    }, SELECTORS.btnDownload);
+        return !el || el.disabled || el.classList.contains('p-disabled') || el.hasAttribute('disabled');
+    }, SELECTORS.btnVerTela);
 
-    if (isDownloadDisabled) {
-        const isVerTelaDisabled = await page.evaluate((sel) => {
-            const el = document.querySelector<HTMLButtonElement>(sel);
-            return !el || el.disabled || el.classList.contains('p-disabled');
-        }, SELECTORS.btnVerTela);
-
-        if (isVerTelaDisabled) {
-            log.warn(`[${filePrefix}] Ambos os botões (Download e Ver em tela) estão indisponíveis.`);
-            return;
-        }
-
-        log.info(`[${filePrefix}] Botão de download bloqueado. Tentando via requisição (Ver em tela)...`);
-
+    if (!isVerTelaDisabled) {
+        log.info(`[${filePrefix}] Botão "Ver em tela" habilitado. Capturando requisição JSON...`);
         try {
             await safeDownloadJsonFromResponse(
                 page,
@@ -50,29 +39,39 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
                 async () => {
                     await realClick(page, SELECTORS.btnVerTela);
                 },
-                '/saude-hora',
+                '/adesao/snh/historico',
                 { retries: 2, retryDelayMs: 3000 }
             );
+            return;
         } catch (error) {
-            log.error({ data: formatError(error) }, `[${filePrefix}] Falha ao interceptar requisição JSON:`);
+            log.warn({ data: formatError(error) }, `[${filePrefix}] Falha ao obter JSON via "Ver em tela". Tentando fallback para download físico...`);
         }
-    } else {
-        log.info(`[${filePrefix}] Botão de download habilitado. Realizando download do arquivo...`);
+    }
 
-        try {
-            const savedPath = await triggerDownloadAndSave(page, {
-                downloadPath,
-                fileName: filePrefix,
-                trigger: () => realClick(page, SELECTORS.btnDownload),
-                startTimeout: 30000,
-                finishTimeout: 180000,
-                retries: 2,
-                retryDelayMs: 3000,
-            });
-            log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso: ${path.basename(savedPath)}`);
-        } catch (error) {
-            log.error({ data: formatError(error) }, `[${filePrefix}] Falha no download do arquivo:`);
-        }
+    const isDownloadDisabled = await page.evaluate((sel) => {
+        const el = document.querySelector<HTMLButtonElement>(sel);
+        return !el || el.disabled || el.classList.contains('p-disabled') || el.hasAttribute('disabled');
+    }, SELECTORS.btnDownload);
+
+    if (isDownloadDisabled) {
+        log.warn(`[${filePrefix}] Ambos os botões (Ver em tela e Download) estão indisponíveis.`);
+        return;
+    }
+
+    log.info(`[${filePrefix}] Botão de download habilitado. Realizando download do arquivo...`);
+    try {
+        const savedPath = await triggerDownloadAndSave(page, {
+            downloadPath,
+            fileName: filePrefix,
+            trigger: () => realClick(page, SELECTORS.btnDownload),
+            startTimeout: 60000,
+            finishTimeout: 300000,
+            retries: 3,
+            retryDelayMs: 5000,
+        });
+        log.info(`[${filePrefix}] Arquivo baixado e renomeado com sucesso: ${path.basename(savedPath)}`);
+    } catch (error) {
+        log.error({ data: formatError(error) }, `[${filePrefix}] Falha no download do arquivo:`);
     }
 }
 

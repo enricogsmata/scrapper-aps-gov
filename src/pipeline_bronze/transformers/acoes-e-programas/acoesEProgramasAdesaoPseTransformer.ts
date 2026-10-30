@@ -8,6 +8,37 @@ import { acoesEProgramasAdesaoPse } from "../../../database/raw_db/schema.js";
 
 const logger = pino();
 
+interface AdesaoPseJsonItem {
+  coMunicipioIbge?: unknown;
+  sgUf?: unknown;
+  noUfAcentuado?: unknown;
+  noMunicipioAcentuado?: unknown;
+  coSeqPseEstabelecimento?: unknown;
+  noEstabelecimento?: unknown;
+  qtdEducandos?: unknown;
+  qtMatriculaCreche?: unknown;
+  qtMatriculaPreEscola?: unknown;
+  qtMatriculaFundamental?: unknown;
+  qtMatriculaMedio?: unknown;
+  qtMatriculaProfissional?: unknown;
+  qtMatriculaEja?: unknown;
+  dsEsferaAdministrativa?: unknown;
+  dsPseLocalizacao?: unknown;
+  dsLocalizacaoDiferenciada?: unknown;
+  stAdesao?: unknown;
+  stPrioritario?: unknown;
+  stMaioriaPbf?: unknown;
+  stSinase?: unknown;
+  stAdesaoNutrisus?: unknown;
+  stObesidade?: unknown;
+  nuCiclo?: unknown;
+}
+
+interface AdesaoPseJsonPayload {
+  data?: unknown;
+  adesoes?: AdesaoPseJsonItem[];
+}
+
 function normalizeHeader(key: string): string {
   return key
     .toLowerCase()
@@ -44,9 +75,62 @@ export async function transformAcoesEProgramasAdesaoPse(): Promise<void> {
     return;
   }
 
+  await raw_db.delete(acoesEProgramasAdesaoPse);
+
+  const jsonFiles = files.filter((file) => file.endsWith(".json"));
   const excelFiles = files.filter(
     (file) => file.endsWith(".xlsx") || file.endsWith(".xls")
   );
+
+  for (const file of jsonFiles) {
+    const filePath = path.join(dirPath, file);
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      const parsed: AdesaoPseJsonPayload = JSON.parse(content);
+      const items = Array.isArray(parsed.adesoes) ? parsed.adesoes : [];
+
+      if (items.length === 0) continue;
+
+      const dataStr = parsed.data != null ? String(parsed.data).trim() : "";
+
+      const records = items.map((item) => ({
+        uf: item.sgUf != null ? String(item.sgUf).trim() : "",
+        municipio: item.noMunicipioAcentuado != null ? String(item.noMunicipioAcentuado).trim() : "",
+        ibge: item.coMunicipioIbge != null ? String(item.coMunicipioIbge).trim() : "",
+        ciclo: item.nuCiclo != null ? String(item.nuCiclo).trim() : "",
+        tipoDeLocalizacao: item.dsPseLocalizacao != null ? String(item.dsPseLocalizacao).trim() : "",
+        localizacaoDiferenciada: item.dsLocalizacaoDiferenciada != null ? String(item.dsLocalizacaoDiferenciada).trim() : "",
+        esferaAdministrativa: item.dsEsferaAdministrativa != null ? String(item.dsEsferaAdministrativa).trim() : "",
+        inep: item.coSeqPseEstabelecimento != null ? String(item.coSeqPseEstabelecimento).trim() : "",
+        nomeDaEscola: item.noEstabelecimento != null ? String(item.noEstabelecimento).trim() : "",
+        quantidadeEducandos: item.qtdEducandos != null ? String(item.qtdEducandos).trim() : "",
+        quantidadeCreche: item.qtMatriculaCreche != null ? String(item.qtMatriculaCreche).trim() : "",
+        quantidadePreEscola: item.qtMatriculaPreEscola != null ? String(item.qtMatriculaPreEscola).trim() : "",
+        quantidadeFundamental: item.qtMatriculaFundamental != null ? String(item.qtMatriculaFundamental).trim() : "",
+        quantidadeMedio: item.qtMatriculaMedio != null ? String(item.qtMatriculaMedio).trim() : "",
+        quantidadeProfissional: item.qtMatriculaProfissional != null ? String(item.qtMatriculaProfissional).trim() : "",
+        quantidadeEja: item.qtMatriculaEja != null ? String(item.qtMatriculaEja).trim() : "",
+        situacaoAdesao: item.stAdesao != null ? String(item.stAdesao).trim() : "",
+        parteDoGrupoPrioritario: item.stPrioritario != null ? String(item.stPrioritario).trim() : "",
+        possuiMaisDe50DosEducandosNoBfa: item.stMaioriaPbf != null ? String(item.stMaioriaPbf).trim() : "",
+        participaDoSistemaNacionalDeAcompanhamentoDeMedidasSocioeducativas: item.stSinase != null ? String(item.stSinase).trim() : "",
+        participouDoNutrisus: item.stAdesaoNutrisus != null ? String(item.stAdesaoNutrisus).trim() : "",
+        aderiuAoProgramaDeObesidade: item.stObesidade != null ? String(item.stObesidade).trim() : "",
+        data: dataStr,
+        noUfAcentuado: item.noUfAcentuado != null ? String(item.noUfAcentuado).trim() : "",
+      }));
+
+      const batchSize = 1000;
+      for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+        await raw_db.insert(acoesEProgramasAdesaoPse).values(batch);
+      }
+
+      logger.info({ file, count: records.length }, "Arquivo JSON processado com sucesso.");
+    } catch (error) {
+      logger.error({ error, file }, "Erro ao processar arquivo JSON.");
+    }
+  }
 
   for (const file of excelFiles) {
     const filePath = path.join(dirPath, file);
@@ -128,6 +212,8 @@ export async function transformAcoesEProgramasAdesaoPse(): Promise<void> {
               row,
               "aderiuaoprogramadeobesidade"
             ),
+            data: "",
+            noUfAcentuado: "",
           }));
 
         if (records.length === 0) continue;

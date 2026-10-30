@@ -8,6 +8,23 @@ import { coberturaSaudeBucalV2 } from "../../../database/raw_db/schema.js";
 
 const logger = pino();
 
+interface JsonRowData {
+  nuCompetencia?: unknown;
+  qtPopulacao?: unknown;
+  nuAnoReferencia?: unknown;
+  qtEquipeSb40h?: unknown;
+  qtEquipeSb30h?: unknown;
+  qtEquipeSb20h?: unknown;
+  qtParametroCadastroEquipeSb?: unknown;
+  pcCoberturaSbSf?: unknown;
+  qtEquipeEsfr?: unknown;
+  qtEquipeEcr?: unknown;
+  qtEquipeEapp?: unknown;
+  qtSisabCadastroEquipeEsfrEcrEapp?: unknown;
+  qtParametroCadastroEquipeSbAps?: unknown;
+  pcCoberturaSbAps?: unknown;
+}
+
 interface RowData {
   "Comp. CNES"?: unknown;
   População?: unknown;
@@ -41,9 +58,50 @@ export async function transformCoberturaSaudeBucalV2(): Promise<void> {
     return;
   }
 
+  await raw_db.delete(coberturaSaudeBucalV2);
+
+  const jsonFiles = files.filter((file) => file.endsWith(".json"));
   const excelFiles = files.filter(
     (file) => file.endsWith(".xlsx") || file.endsWith(".xls")
   );
+
+  for (const file of jsonFiles) {
+    const filePath = path.join(dirPath, file);
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      const parsed: unknown = JSON.parse(content);
+      const rows: JsonRowData[] = Array.isArray(parsed) ? parsed : [];
+
+      if (rows.length === 0) continue;
+
+      const records = rows.map((row) => ({
+        compCnes: row.nuCompetencia != null ? String(row.nuCompetencia).trim() : "",
+        populacao: row.qtPopulacao != null ? String(row.qtPopulacao).trim() : "",
+        anoDeReferencia: row.nuAnoReferencia != null ? String(row.nuAnoReferencia).trim() : "",
+        qtEsb40h: row.qtEquipeSb40h != null ? String(row.qtEquipeSb40h).trim() : "",
+        qtEsb30h: row.qtEquipeSb30h != null ? String(row.qtEquipeSb30h).trim() : "",
+        qtEsb20h: row.qtEquipeSb20h != null ? String(row.qtEquipeSb20h).trim() : "",
+        qtParametroCadastroEquipeSb: row.qtParametroCadastroEquipeSb != null ? String(row.qtParametroCadastroEquipeSb).trim() : "",
+        coberturaSbSf: row.pcCoberturaSbSf != null ? String(row.pcCoberturaSbSf).trim() : "",
+        qtEsfr: row.qtEquipeEsfr != null ? String(row.qtEquipeEsfr).trim() : "",
+        qtEcr: row.qtEquipeEcr != null ? String(row.qtEquipeEcr).trim() : "",
+        qtEapp: row.qtEquipeEapp != null ? String(row.qtEquipeEapp).trim() : "",
+        qtSisabCadastroEquipeEsfrEcrEapp: row.qtSisabCadastroEquipeEsfrEcrEapp != null ? String(row.qtSisabCadastroEquipeEsfrEcrEapp).trim() : "",
+        qtParametroCadastroEquipeSbAps: row.qtParametroCadastroEquipeSbAps != null ? String(row.qtParametroCadastroEquipeSbAps).trim() : "",
+        coberturaSbAps: row.pcCoberturaSbAps != null ? String(row.pcCoberturaSbAps).trim() : "",
+      }));
+
+      const batchSize = 1000;
+      for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+        await raw_db.insert(coberturaSaudeBucalV2).values(batch);
+      }
+
+      logger.info({ file, count: records.length }, "Arquivo JSON processado com sucesso.");
+    } catch (error) {
+      logger.error({ error, file }, "Erro ao processar arquivo JSON.");
+    }
+  }
 
   for (const file of excelFiles) {
     const filePath = path.join(dirPath, file);

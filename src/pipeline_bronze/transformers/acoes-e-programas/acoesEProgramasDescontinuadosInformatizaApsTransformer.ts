@@ -8,6 +8,18 @@ import { acoesEProgramasDescontinuadosInformatizaAps } from "../../../database/r
 
 const logger = pino();
 
+interface InformatizaApsJsonRow {
+  sgUf?: unknown;
+  noMunicipio?: unknown;
+  coMunicipioIbge?: unknown;
+  coEquipe?: unknown;
+  coTipoEquipe?: unknown;
+  subtipoEquipe?: unknown;
+  situacao?: unknown;
+  portariaHomologacao?: unknown;
+  portariaCancelamento?: unknown;
+}
+
 interface InformatizaApsRow {
   UF?: unknown;
   MUNICÍPIO?: unknown;
@@ -41,9 +53,48 @@ export async function transformAcoesEProgramasDescontinuadosInformatizaAps(): Pr
     return;
   }
 
+  await raw_db.delete(acoesEProgramasDescontinuadosInformatizaAps);
+
+  const jsonFiles = files.filter((file) => file.toLowerCase().endsWith(".json"));
   const excelFiles = files.filter(
     (file) => file.toLowerCase().endsWith(".xlsx") || file.toLowerCase().endsWith(".xls")
   );
+
+  for (const file of jsonFiles) {
+    const filePath = path.join(dirPath, file);
+    logger.info({ file }, "Processando arquivo JSON.");
+
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      const parsed: unknown = JSON.parse(content);
+      const rows: InformatizaApsJsonRow[] = Array.isArray(parsed) ? parsed : [];
+
+      if (rows.length === 0) continue;
+
+      const records = rows.map((row) => ({
+        uf: row.sgUf != null ? String(row.sgUf).trim() : "",
+        municipio: row.noMunicipio != null ? String(row.noMunicipio).trim() : "",
+        ibge: row.coMunicipioIbge != null ? String(row.coMunicipioIbge).trim() : "",
+        ine: row.coEquipe != null ? String(row.coEquipe).trim() : "",
+        tipoDaEquipe: row.coTipoEquipe != null ? String(row.coTipoEquipe).trim() : "",
+        subtipoDaEquipe: row.subtipoEquipe != null ? String(row.subtipoEquipe).trim() : "",
+        situacao: row.situacao != null ? String(row.situacao).trim() : "",
+        portariaDeHomologacao: row.portariaHomologacao != null ? String(row.portariaHomologacao).trim() : "",
+        portariaDeCancelamento: row.portariaCancelamento != null ? String(row.portariaCancelamento).trim() : "",
+      }));
+
+      const batchSize = 1000;
+      for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+        await raw_db.insert(acoesEProgramasDescontinuadosInformatizaAps).values(batch);
+        logger.info({ file, inserted: i + batch.length, total: records.length }, "Lote inserido com sucesso.");
+      }
+
+      logger.info({ file, count: records.length }, "Arquivo JSON processado com sucesso.");
+    } catch (error) {
+      logger.error({ error, file }, "Erro ao processar arquivo JSON.");
+    }
+  }
 
   for (const file of excelFiles) {
     const filePath = path.join(dirPath, file);

@@ -8,6 +8,15 @@ import { gerenciaapsInesCnesHomologados } from "../../../database/raw_db/schema.
 
 const logger = pino();
 
+interface JsonCnesHomologado {
+  siglaUf?: unknown;
+  nomeMunicipio?: unknown;
+  codigoMunicipio?: unknown;
+  codigoCnes?: unknown;
+  descricaoDominioUnidade?: unknown;
+  descricaoPortariaHomologacao?: unknown;
+}
+
 interface RowData {
   UF?: unknown;
   MUNICÍPIO?: unknown;
@@ -36,9 +45,47 @@ export async function transformGerenciaapsInesCnesHomologados(): Promise<void> {
     return;
   }
 
+  await raw_db.delete(gerenciaapsInesCnesHomologados);
+
+  const jsonFiles = files.filter((file) => file.endsWith(".json"));
   const excelFiles = files.filter(
     (file) => file.endsWith(".xlsx") || file.endsWith(".xls")
   );
+
+  for (const file of jsonFiles) {
+    const filePath = path.join(dirPath, file);
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      const parsed: unknown = JSON.parse(content);
+      const rows: JsonCnesHomologado[] = Array.isArray(parsed) ? parsed : [];
+
+      if (rows.length === 0) continue;
+
+      const records = rows.map((row) => ({
+        uf: row.siglaUf != null ? String(row.siglaUf).trim() : "",
+        municipio: row.nomeMunicipio != null ? String(row.nomeMunicipio).trim() : "",
+        ibge: row.codigoMunicipio != null ? String(row.codigoMunicipio).trim() : "",
+        ine: "",
+        codigoDoTipoDeEquipe: "",
+        tipoDeEquipe: "",
+        subtipoDeEquipe: "",
+        portaria: row.descricaoPortariaHomologacao != null ? String(row.descricaoPortariaHomologacao).trim() : "",
+        esferaAdministrativa: "",
+        cnes: row.codigoCnes != null ? String(row.codigoCnes).trim() : "",
+        dominioUnidade: row.descricaoDominioUnidade != null ? String(row.descricaoDominioUnidade).trim() : "",
+      }));
+
+      const batchSize = 1000;
+      for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+        await raw_db.insert(gerenciaapsInesCnesHomologados).values(batch);
+      }
+
+      logger.info({ file, count: records.length }, "Arquivo JSON processado com sucesso.");
+    } catch (error) {
+      logger.error({ error, file }, "Erro ao processar arquivo JSON.");
+    }
+  }
 
   for (const file of excelFiles) {
     const filePath = path.join(dirPath, file);
@@ -68,6 +115,8 @@ export async function transformGerenciaapsInesCnesHomologados(): Promise<void> {
             subtipoDeEquipe: String(row["SUBTIPO DE EQUIPE"] ?? "").trim(),
             portaria: String(row.PORTARIA ?? "").trim(),
             esferaAdministrativa: String(row["ESFERA ADMINISTRATIVA"] ?? "").trim(),
+            cnes: "",
+            dominioUnidade: "",
           }));
 
         if (records.length === 0) continue;

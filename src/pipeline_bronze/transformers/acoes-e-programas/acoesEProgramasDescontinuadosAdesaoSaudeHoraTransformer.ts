@@ -8,6 +8,22 @@ import { acoesEProgramasDescontinuadosAdesaoSaudeHora } from "../../../database/
 
 const logger = pino();
 
+interface AdesaoSaudeHoraJsonItem {
+  sgUf?: unknown;
+  noMunicipio?: unknown;
+  coMunicipioIbge?: unknown;
+  coCnes?: unknown;
+  dsTipoAdesao?: unknown;
+  dsSituacao?: unknown;
+  portariaAdesao?: unknown;
+  portariaCancelamento?: unknown;
+}
+
+interface AdesaoSaudeHoraJsonPayload {
+  data?: unknown;
+  items?: AdesaoSaudeHoraJsonItem[];
+}
+
 interface AdesaoSaudeHoraRow {
   UF?: unknown;
   MUNICÍPIO?: unknown;
@@ -41,9 +57,50 @@ export async function transformAcoesEProgramasDescontinuadosAdesaoSaudeHora(): P
     return;
   }
 
+  await raw_db.delete(acoesEProgramasDescontinuadosAdesaoSaudeHora);
+
+  const jsonFiles = files.filter((file) => file.toLowerCase().endsWith(".json"));
   const excelFiles = files.filter(
     (file) => file.toLowerCase().endsWith(".xlsx") || file.toLowerCase().endsWith(".xls")
   );
+
+  for (const file of jsonFiles) {
+    const filePath = path.join(dirPath, file);
+    logger.info({ file }, "Processando arquivo JSON.");
+
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      const parsed: AdesaoSaudeHoraJsonPayload = JSON.parse(content);
+      const items = Array.isArray(parsed.items) ? parsed.items : [];
+
+      if (items.length === 0) continue;
+
+      const dataStr = parsed.data != null ? String(parsed.data).trim() : "";
+
+      const records = items.map((item) => ({
+        uf: item.sgUf != null ? String(item.sgUf).trim() : "",
+        municipio: item.noMunicipio != null ? String(item.noMunicipio).trim() : "",
+        ibge: item.coMunicipioIbge != null ? String(item.coMunicipioIbge).trim() : "",
+        cnes: item.coCnes != null ? String(item.coCnes).trim() : "",
+        tipoDaAdesao: item.dsTipoAdesao != null ? String(item.dsTipoAdesao).trim() : "",
+        situacaoDaAdesao: item.dsSituacao != null ? String(item.dsSituacao).trim() : "",
+        portariaDeAdesao: item.portariaAdesao != null ? String(item.portariaAdesao).trim() : "",
+        portariaDeCancelamento: item.portariaCancelamento != null ? String(item.portariaCancelamento).trim() : "",
+        data: dataStr,
+      }));
+
+      const batchSize = 1000;
+      for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+        await raw_db.insert(acoesEProgramasDescontinuadosAdesaoSaudeHora).values(batch);
+        logger.info({ file, inserted: i + batch.length, total: records.length }, "Lote inserido com sucesso.");
+      }
+
+      logger.info({ file, count: records.length }, "Arquivo JSON processado com sucesso.");
+    } catch (error) {
+      logger.error({ error, file }, "Erro ao processar arquivo JSON.");
+    }
+  }
 
   for (const file of excelFiles) {
     const filePath = path.join(dirPath, file);
@@ -71,6 +128,7 @@ export async function transformAcoesEProgramasDescontinuadosAdesaoSaudeHora(): P
             situacaoDaAdesao: String(row["SITUAÇÃO DA ADESÃO"] ?? row["SITUACAO DA ADESAO"] ?? "").trim(),
             portariaDeAdesao: String(row["PORTARIA DE ADESÃO"] ?? row["PORTARIA DE ADESAO"] ?? "").trim(),
             portariaDeCancelamento: String(row["PORTARIA DE CANCELAMENTO"] ?? "").trim(),
+            data: "",
           }));
 
         if (records.length === 0) continue;

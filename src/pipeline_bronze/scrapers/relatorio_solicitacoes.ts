@@ -13,6 +13,7 @@ import {
     triggerDownloadAndSave,
     realClick,
     formatError,
+    safeDownloadJsonFromResponse,
     safeRunCombination
 } from "../downloader.js";
 
@@ -49,9 +50,33 @@ const DYNAMIC_DROPDOWNS = [
 async function doDownload(page: Page, downloadPath: string, filePrefix: string): Promise<void> {
     const log = logger.forMethod('doDownload');
 
+    const isAplicarFiltroDisabled = await page.evaluate((sel) => {
+        const el = document.querySelector<HTMLButtonElement>(sel);
+        return !el || el.disabled || el.classList.contains('p-disabled') || el.hasAttribute('disabled');
+    }, SELECTORS.btnAplicarFiltro);
+
+    if (!isAplicarFiltroDisabled) {
+        log.info(`[${filePrefix}] Botão "Aplicar filtro" habilitado. Capturando requisição JSON...`);
+        try {
+            await safeDownloadJsonFromResponse(
+                page,
+                downloadPath,
+                filePrefix,
+                async () => {
+                    await realClick(page, SELECTORS.btnAplicarFiltro);
+                },
+                /\/relatorios\/publicos\/solicitacoes\//,
+                { retries: 2, retryDelayMs: 3000 }
+            );
+            return;
+        } catch (error) {
+            log.warn({ data: formatError(error) }, `[${filePrefix}] Falha ao capturar JSON via filtro. Tentando download físico...`);
+        }
+    }
+
     const isModalDownloadDisabled = await page.evaluate((sel) => {
         const el = document.querySelector<HTMLButtonElement>(sel);
-        return !el || el.disabled || el.classList.contains('p-disabled');
+        return !el || el.disabled || el.classList.contains('p-disabled') || el.hasAttribute('disabled');
     }, SELECTORS.btnDownloadModal);
 
     try {
@@ -61,13 +86,17 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
                 downloadPath,
                 fileName: filePrefix,
                 trigger: () => realClick(page, SELECTORS.btnDownloadModal),
-                startTimeout: 30000,
-                finishTimeout: 180000,
-                retries: 2,
-                retryDelayMs: 3000,
+                startTimeout: 60000,
+                finishTimeout: 300000,
+                retries: 3,
+                retryDelayMs: 5000,
             });
         } else {
             log.info(`[${filePrefix}] Download bloqueado no modal. Aplicando filtro para download da tabela...`);
+            if (isAplicarFiltroDisabled) {
+                log.warn(`[${filePrefix}] Botão de aplicar filtro desabilitado. Abortando fallback.`);
+                return;
+            }
             await realClick(page, SELECTORS.btnAplicarFiltro);
             await page.waitForSelector(SELECTORS.tabelaRelatorio, { visible: true, timeout: 60000 });
             await page.waitForSelector(SELECTORS.btnDownloadTabela, { visible: true, timeout: 60000 });
@@ -76,10 +105,10 @@ async function doDownload(page: Page, downloadPath: string, filePrefix: string):
                 downloadPath,
                 fileName: filePrefix,
                 trigger: () => realClick(page, SELECTORS.btnDownloadTabela),
-                startTimeout: 30000,
-                finishTimeout: 180000,
-                retries: 2,
-                retryDelayMs: 3000,
+                startTimeout: 60000,
+                finishTimeout: 300000,
+                retries: 3,
+                retryDelayMs: 5000,
             });
         }
         log.info(`[${filePrefix}] Download realizado e renomeado com sucesso.`);

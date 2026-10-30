@@ -9,7 +9,6 @@ import { transformAcoesEProgramasIndicadorCadastro } from "./transformers/acoes-
 import { transformAcoesEProgramasIndicadorPainel } from "./transformers/acoes-e-programas/acoesEProgramasIndicadorPainelTransformer.js";
 import { transformAcoesEProgramasIndicadorPrenatal } from "./transformers/acoes-e-programas/acoesEProgramasIndicadorPrenatalTransformer.js";
 import { transformprofissionaisCadastradosProgramas } from "./transformers/acoes-e-programas/acoesEProgramasProfissionaisCadastradosTransformer.js";
-import { transformindicadoresAcompanhamentoPbf } from "./transformers/acoes-e-programas/acoesEProgramasRelatorioConsolidadoTransformer.js";
 import { transformAcoesEProgramasRelpagamentopmaq } from "./transformers/acoes-e-programas/acoesEProgramasRelpagamentopmaqTransformer.js";
 import { transformAcoesEProgramasSaudeAtividadeColetiva } from "./transformers/acoes-e-programas/acoesEProgramasSaudeAtividadeColetivaTransformer.js";
 import { transformAcoesEProgramasSaudeProducao } from "./transformers/acoes-e-programas/acoesEProgramasSaudeProducaoTransformer.js";
@@ -59,7 +58,7 @@ const TRANSFORM_TASKS: readonly TransformTask[] = [
     { name: "MapasSus", execute: transformMapasSus },
     { name: "RelHistoricoPagamentoEsf", execute: transformRelHistoricoPagamentoEsf },
     { name: "RelHistoricoPagamentoOutros", execute: transformRelHistoricoPagamentoOutros },
-    { name: "RelatorioConsolidado", execute: transformindicadoresAcompanhamentoPbf },
+    { name: "RelatorioConsolidado", execute: transformprofissionaisCadastradosProgramas },
     { name: "profissionaisCadastradosProgramas", execute: transformprofissionaisCadastradosProgramas },
     { name: "AcoesEProgramasAdesaoPse", execute: transformAcoesEProgramasAdesaoPse },
     { name: "AcoesEProgramasHomologacaoSaudeComAgente", execute: transformAcoesEProgramasHomologacaoSaudeComAgente },

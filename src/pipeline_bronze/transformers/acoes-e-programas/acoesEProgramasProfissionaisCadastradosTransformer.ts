@@ -4,7 +4,7 @@ import path from "node:path";
 import xlsx from "xlsx";
 import pino from "pino";
 import { raw_db } from "../../../database/raw_db/connection.js";
-import { profissionaisCadastradosProgramas } from "../../../database/raw_db/schema.js";
+import { acoesEProgramasProfissionaisCadastrados } from "../../../database/raw_db/schema.js"; 
 
 const logger = pino();
 
@@ -48,7 +48,7 @@ export async function transformprofissionaisCadastradosProgramas(): Promise<void
         (file) => file.endsWith(".xlsx") || file.endsWith(".xls")
     );
 
-    await raw_db.delete(profissionaisCadastradosProgramas);
+    await raw_db.delete(acoesEProgramasProfissionaisCadastrados);
 
     for (const file of excelFiles) {
         const filePath = path.join(dirPath, file);
@@ -110,7 +110,8 @@ export async function transformprofissionaisCadastradosProgramas(): Promise<void
                 const batchSize = 1000;
                 for (let i = 0; i < records.length; i += batchSize) {
                     const batch = records.slice(i, i + batchSize);
-                    await raw_db.insert(profissionaisCadastradosProgramas).values(batch);
+                    // CORREÇÃO: Inserindo na tabela raw correta
+                    await raw_db.insert(acoesEProgramasProfissionaisCadastrados).values(batch);
                 }
             }
 

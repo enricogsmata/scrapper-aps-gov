@@ -1,10 +1,10 @@
-// src/transformers/acoes-e-programas/indicadoresAcompanhamentoPbfTransformer.ts
+// src/transformers/acoes-e-programas/acoesEProgramasRelatorioConsolidadoTransformer.ts
 import fs from "node:fs/promises";
 import path from "node:path";
 import xlsx from "xlsx";
 import pino from "pino";
 import { raw_db } from "../../../database/raw_db/connection.js";
-import { indicadoresAcompanhamentoPbf } from "../../../database/raw_db/schema.js";
+import { acoesEProgramasRelatorioConsolidado } from "../../../database/raw_db/schema.js";
 
 const logger = pino();
 
@@ -28,7 +28,7 @@ function getValue(
   return "";
 }
 
-export async function transformindicadoresAcompanhamentoPbf(): Promise<void> {
+export async function transformacoesEProgramasRelatorioConsolidado(): Promise<void> {
   const dirPath = path.resolve(
     process.cwd(),
     "downloads",
@@ -48,7 +48,7 @@ export async function transformindicadoresAcompanhamentoPbf(): Promise<void> {
     (file) => file.endsWith(".xlsx") || file.endsWith(".xls")
   );
 
-  await raw_db.delete(indicadoresAcompanhamentoPbf);
+  await raw_db.delete(acoesEProgramasRelatorioConsolidado);
 
   for (const file of excelFiles) {
     const filePath = path.join(dirPath, file);
@@ -162,7 +162,7 @@ export async function transformindicadoresAcompanhamentoPbf(): Promise<void> {
         const batchSize = 1000;
         for (let i = 0; i < records.length; i += batchSize) {
           const batch = records.slice(i, i + batchSize);
-          await raw_db.insert(indicadoresAcompanhamentoPbf).values(batch);
+          await raw_db.insert(acoesEProgramasRelatorioConsolidado).values(batch);
         }
       }
 

@@ -38,6 +38,8 @@ import { transformRelHistoricoPagamentoOutros } from "./transformers/rel_histori
 import { transformAcoesEProgramasHomologacaoSaudeComAgente } from "./transformers/acoes_e_programas_homologacao_saude_com_agente.js";
 import { transformAcoesEProgramasRelpagamentopmaq } from "./transformers/acoes_e_programas_relpagamentopmaq.js";
 import { transformSiapsPublico } from "./transformers/siaps_publico.js";
+import { transformAcoesEProgramasRelatorioConsolidado } from "./transformers/acoes_e_programas_relatorio_consolidado.js";
+import { transformAcoesEProgramasProfissionaisCadastrados } from "./transformers/acoes_e_programas_profissionais_cadastrados.js";
 
 const logger = new_logger(import.meta.url);
 
@@ -85,6 +87,8 @@ const steps: TransformerStep[] = [
   { name: "acoes_e_programas_homologacao_saude_com_agente", run: transformAcoesEProgramasHomologacaoSaudeComAgente },
   { name: "acoes_e_programas_relpagamentopmaq", run: transformAcoesEProgramasRelpagamentopmaq },
   { name: "siaps_publico", run: transformSiapsPublico },
+  { name: "acoes_e_programas_relatorio_consolidado", run: transformAcoesEProgramasRelatorioConsolidado },
+  { name: "acoes_e_programas_profissionais_cadastrados", run: transformAcoesEProgramasProfissionaisCadastrados },
 ];
 
 export async function runSilverPipeline(): Promise<void> {

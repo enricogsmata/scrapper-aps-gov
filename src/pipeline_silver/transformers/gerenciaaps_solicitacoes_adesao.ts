@@ -49,6 +49,10 @@ export async function transformGerenciaapsSolicitacoesAdesao(): Promise<void> {
         numeroSolicitacao: row.numeroDaSolicitacao,
         programa: row.programa,
         situacaoAdesao: row.situacaoDaAdesao,
+        data: row.data,
+        sgEstrategia: row.sgEstrategia,
+        dtCadastro: row.dtCadastro,
+        dtAtualizacao: row.dtAtualizacao,
       });
     }
 

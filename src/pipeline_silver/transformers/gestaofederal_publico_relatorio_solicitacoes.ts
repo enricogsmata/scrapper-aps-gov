@@ -2,9 +2,9 @@
 import { sql } from "drizzle-orm";
 import { db } from "../../database/db/connection.js";
 import { raw_db } from "../../database/raw_db/connection.js";
-import { 
-  municipios, 
-  gestaofederalSolicitacoes 
+import {
+  municipios,
+  gestaofederalSolicitacoes
 } from "../../database/db/schema.js";
 import { gestaofederalPublicoRelatorioSolicitacoes } from "../../database/raw_db/schema.js";
 import { new_logger } from "../../services/logs.js";
@@ -53,6 +53,16 @@ export async function transformGestaofederalPublicoRelatorioSolicitacoes(): Prom
         municipioIbge: row.ibge,
         estrategia: row.estrategia,
         qtdeSolicitada: parseIntSafe(row.qtdeSolicitada),
+        codigoAcaoEstrategica: row.codigoAcaoEstrategica,
+        qtTeto: parseIntSafe(row.qtTeto),
+        qtCredenciado: parseIntSafe(row.qtCredenciado),
+        qtSaldo: parseIntSafe(row.qtSaldo),
+        aplicavelTeto: row.aplicavelTeto,
+        aplicavelSaldo: row.aplicavelSaldo,
+        qtMedicinaSolicitada: parseIntSafe(row.qtMedicinaSolicitada),
+        qtEnfermagemSolicitada: parseIntSafe(row.qtEnfermagemSolicitada),
+        qtOdontologiaSolicitada: parseIntSafe(row.qtOdontologiaSolicitada),
+        qtMultiprofissionalSolicitada: parseIntSafe(row.qtMultiprofissionalSolicitada),
       });
     }
 

@@ -2,10 +2,10 @@
 import { sql } from "drizzle-orm";
 import { db } from "../../database/db/connection.js";
 import { raw_db } from "../../database/raw_db/connection.js";
-import { 
-  municipios, 
-  estabelecimentosSaude, 
-  saudeNaHoraAdesoes 
+import {
+  municipios,
+  estabelecimentosSaude,
+  saudeNaHoraAdesoes
 } from "../../database/db/schema.js";
 import { acoesEProgramasDescontinuadosAdesaoSaudeHora } from "../../database/raw_db/schema.js";
 import { new_logger } from "../../services/logs.js";
@@ -60,6 +60,7 @@ export async function transformAcoesEProgramasDescontinuadosAdesaoSaudeHora(): P
         situacaoDaAdesao: row.situacaoDaAdesao,
         portariaDeAdesao: row.portariaDeAdesao,
         portariaDeCancelamento: row.portariaDeCancelamento,
+        data: row.data,
       });
     }
 

@@ -2,11 +2,11 @@
 import { sql } from "drizzle-orm";
 import { db } from "../../database/db/connection.js";
 import { raw_db } from "../../database/raw_db/connection.js";
-import { 
-  municipios, 
-  tiposEquipe, 
-  equipesSaude, 
-  gerenciaapsEquipesHomologadas 
+import {
+  municipios,
+  tiposEquipe,
+  equipesSaude,
+  gerenciaapsEquipesHomologadas
 } from "../../database/db/schema.js";
 import { gerenciaapsInesCnesHomologados } from "../../database/raw_db/schema.js";
 import { new_logger } from "../../services/logs.js";
@@ -20,7 +20,7 @@ export async function transformGerenciaapsInesCnesHomologados(): Promise<void> {
     log.info({ data: [] }, "Iniciando extração de gerenciaaps_ines_cnes_homologados do raw_db");
 
     const rawData = await raw_db.select().from(gerenciaapsInesCnesHomologados);
-    
+
     log.info({ data: [{ totalExtraido: rawData.length }] }, "Dados extraídos. Iniciando processamento e normalização");
 
     if (rawData.length === 0) {
@@ -73,6 +73,8 @@ export async function transformGerenciaapsInesCnesHomologados(): Promise<void> {
         tipoEquipeCodigo: tipoEquipeCodigo,
         portaria: row.portaria,
         esferaAdministrativa: row.esferaAdministrativa,
+        codigoCnes: row.cnes,
+        dominioUnidade: row.dominioUnidade,
       });
     }
 
@@ -80,13 +82,13 @@ export async function transformGerenciaapsInesCnesHomologados(): Promise<void> {
     const tiposEquipeValues = Array.from(uniqueTiposEquipeMap.values());
     const equipesSaudeValues = Array.from(uniqueEquipesSaudeMap.values());
 
-    log.info({ 
-      data: [{ 
+    log.info({
+      data: [{
         municipios: municipiosValues.length,
         tiposEquipe: tiposEquipeValues.length,
         equipesSaude: equipesSaudeValues.length,
         fatos: fatosToInsert.length
-      }] 
+      }]
     }, "Iniciando UPSERTs nas tabelas dimensionais e inserção na tabela fato");
 
     const chunkSize = 1000;
@@ -130,7 +132,7 @@ export async function transformGerenciaapsInesCnesHomologados(): Promise<void> {
 
     // CLEAN & INSERT Fatos (Garantir idempotência na tabela fato)
     await db.delete(gerenciaapsEquipesHomologadas);
-    
+
     for (let i = 0; i < fatosToInsert.length; i += chunkSize) {
       await db.insert(gerenciaapsEquipesHomologadas)
         .values(fatosToInsert.slice(i, i + chunkSize));

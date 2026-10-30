@@ -26,7 +26,7 @@ export async function transformCoberturaAps(): Promise<void> {
     log.info({ data: [] }, "Iniciando extração de cobertura_aps do raw_db");
 
     const rawData = await raw_db.select().from(sourceCoberturaAps);
-    
+
     log.info({ data: [{ totalExtraido: rawData.length }] }, "Dados extraídos. Iniciando processamento e normalização");
 
     if (rawData.length === 0) {
@@ -52,18 +52,19 @@ export async function transformCoberturaAps(): Promise<void> {
         qtCadastrosDasEcrEEapp: parseIntSafe(row.qtCadastrosDasEcrEEapp),
         qtCapacidadeDaEquipe: parseIntSafe(row.qtCapacidadeDaEquipe),
         coberturaApsPercentual: parseDecimalSafe(row.coberturaAps),
+        qtCadastroEquipeEsfrEcrEapp: parseIntSafe(row.qtCadastroEquipeEsfrEcrEapp),
       };
     });
 
-    log.info({ 
-      data: [{ fatos: fatosToInsert.length }] 
+    log.info({
+      data: [{ fatos: fatosToInsert.length }]
     }, "Iniciando inserção na tabela fato");
 
     const chunkSize = 1000;
 
     // CLEAN & INSERT Fatos (Garante idempotência, visto que não há chaves compostas na fato)
     await db.delete(targetCoberturaAps);
-    
+
     for (let i = 0; i < fatosToInsert.length; i += chunkSize) {
       await db.insert(targetCoberturaAps)
         .values(fatosToInsert.slice(i, i + chunkSize));
